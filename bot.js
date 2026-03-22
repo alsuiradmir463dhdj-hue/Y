@@ -13,79 +13,113 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== ХРАНИЛИЩА ==========
-const verifiedGroups = new Map();
-const pendingGroups = new Map();
-const userBalance = new Map();
-const purchases = new Map();
-const pendingInvoices = new Map();
-const mutedUsers = new Map();
-const bannedUsers = new Map();
-const captchaPending = new Map();
-const groupVerificationCodes = new Map();
-const animations = new Map();
+const userBalance = new Map();      // userId -> { stars }
+const verifiedGroups = new Map();   // groupId -> { verified, addedBy, verifiedAt }
+const pendingGroups = new Map();    // groupId -> { secretCode, addedBy }
+const groupVerificationCodes = new Map(); // groupId -> { code, userId }
 
-// ========== АНИМАЦИЯ (1 БУКВА В 1000 МС = 1 СЕКУНДА) ==========
-async function animateTyping(chatId, fullText, speed = 1000) {
-    if (animations.has(chatId)) {
-        clearInterval(animations.get(chatId).interval);
-        animations.delete(chatId);
-    }
-    
-    const firstChar = fullText[0];
-    let currentText = firstChar;
-    let index = 1;
-    
-    const sentMsg = await bot.sendMessage(chatId, currentText, {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true
-    });
-    
-    const interval = setInterval(async () => {
-        if (index >= fullText.length) {
-            clearInterval(interval);
-            animations.delete(chatId);
-            return;
-        }
-        
-        currentText += fullText[index];
-        index++;
-        
-        try {
-            await bot.editMessageText(currentText, {
-                chat_id: chatId,
-                message_id: sentMsg.message_id,
-                parse_mode: 'HTML'
-            });
-        } catch (err) {
-            clearInterval(interval);
-            animations.delete(chatId);
-        }
-    }, speed);
-    
-    animations.set(chatId, { interval, messageId: sentMsg.message_id });
-    return sentMsg;
+// ========== ВСПОМОГАТЕЛЬНЫЕ ==========
+function generateSecretCode() {
+    const words = ['яблоко', 'груша', 'вишня', 'персик', 'манго', 'киви', 'лимон', 'апельсин'];
+    const word = words[Math.floor(Math.random() * words.length)];
+    const number = Math.floor(Math.random() * 100);
+    return `${word}${number}`;
 }
 
-async function waitForAnimation(chatId) {
-    return new Promise((resolve) => {
-        const check = setInterval(() => {
-            if (!animations.has(chatId)) {
-                clearInterval(check);
-                resolve();
-            }
-        }, 100);
-        setTimeout(() => {
-            clearInterval(check);
-            resolve();
-        }, 60000);
-    });
+function isGroupVerified(chatId) {
+    return verifiedGroups.get(chatId)?.verified === true;
 }
 
 // ========== MIDDLEWARE ==========
 app.use(express.json());
 app.use(express.static('public'));
 
-// ========== КОМАНДЫ БОТА (БЕЗ УДАЛЕНИЯ СООБЩЕНИЙ) ==========
+// ========== API ==========
+
+// Мои группы
+app.get('/api/my-groups', async (req, res) => {
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ groups: [] });
+    
+    const groups = [];
+    
+    // Верифицированные группы
+    for (const [groupId, data] of verifiedGroups.entries()) {
+        if (data.addedBy === userId) {
+            try {
+                const chat = await bot.getChat(groupId);
+                groups.push({ id: groupId, title: chat.title, verified: true });
+            } catch (err) {}
+        }
+    }
+    
+    // Ожидающие верификации группы
+    for (const [groupId, data] of pendingGroups.entries()) {
+        if (data.addedBy === userId) {
+            try {
+                const chat = await bot.getChat(groupId);
+                groups.push({ id: groupId, title: chat.title, verified: false });
+            } catch (err) {}
+        }
+    }
+    
+    res.json({ groups });
+});
+
+// Генерация кода
+app.post('/api/generate-code', async (req, res) => {
+    const { groupId } = req.body;
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    
+    if (!groupId || !userId) return res.json({ error: 'Не хватает данных' });
+    
+    const pending = pendingGroups.get(parseInt(groupId));
+    if (!pending) return res.json({ error: 'Группа не найдена. Добавьте бота в группу' });
+    
+    const code = generateSecretCode();
+    groupVerificationCodes.set(parseInt(groupId), { code, userId, date: Date.now() });
+    
+    res.json({ code });
+});
+
+// Подтверждение группы
+app.post('/api/verify-group', async (req, res) => {
+    const { groupId, code } = req.body;
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    
+    const pending = groupVerificationCodes.get(parseInt(groupId));
+    if (!pending) return res.json({ error: 'Код не найден или истёк' });
+    if (pending.code !== code) return res.json({ error: 'Неверный код' });
+    if (pending.userId !== userId) return res.json({ error: 'Не ваш код' });
+    
+    const groupData = pendingGroups.get(parseInt(groupId));
+    if (!groupData) return res.json({ error: 'Группа не найдена' });
+    
+    verifiedGroups.set(parseInt(groupId), {
+        verified: true,
+        addedBy: groupData.addedBy,
+        addedByUsername: groupData.addedByUsername,
+        verifiedAt: new Date().toISOString()
+    });
+    
+    pendingGroups.delete(parseInt(groupId));
+    groupVerificationCodes.delete(parseInt(groupId));
+    
+    await bot.sendMessage(parseInt(groupId), `✅ Группа верифицирована! Администратор ${groupData.addedByUsername} получил полный доступ.`);
+    
+    res.json({ success: true });
+});
+
+// Баланс
+app.get('/api/balance', (req, res) => {
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
+    
+    const user = userBalance.get(userId) || { stars: 5 };
+    res.json({ stars: user.stars });
+});
+
+// ========== КОМАНДЫ БОТА ==========
 
 // /start
 bot.onText(/\/start/, async (msg) => {
@@ -93,21 +127,14 @@ bot.onText(/\/start/, async (msg) => {
     const userId = msg.from.id;
     
     if (!userBalance.has(userId)) {
-        userBalance.set(userId, { stars: 5, ultraUntil: null });
+        userBalance.set(userId, { stars: 5 });
     }
     
     const balance = userBalance.get(userId);
     
-    const text = `👋 Привет, ${msg.from.first_name}!
-
-⭐ Ваш баланс: ${balance.stars} звёзд
-
-Спасибо, что используете меня!`;
+    await bot.sendMessage(chatId, `👋 Привет, ${msg.from.first_name}!\n\n⭐ Ваш баланс: ${balance.stars} звёзд\n\nСпасибо, что используете меня!`);
     
-    await animateTyping(chatId, text, 1000);
-    await waitForAnimation(chatId);
-    
-    await bot.sendMessage(chatId, '🚀 Нажмите кнопку ниже, чтобы открыть мини-приложение:', {
+    await bot.sendMessage(chatId, '🚀 Нажмите кнопку ниже:', {
         reply_markup: {
             inline_keyboard: [[{
                 text: '🚀 Открыть мини-приложение',
@@ -120,18 +147,25 @@ bot.onText(/\/start/, async (msg) => {
 // /help
 bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
-    const text = `📋 Команды:
-/start - приветствие с балансом
+    await bot.sendMessage(chatId, `📋 Команды:
+/start - приветствие
 /help - помощь
 /app - открыть мини-приложение
 
-⭐ Звёзды можно потратить на:
-• Префикс — 50 ⭐
-• ULTRA подписка — 5 ⭐
+⭐ Звёзды можно потратить на префикс — 50 ⭐
 
-👮‍♂️ Все настройки группы в мини-приложении!`;
+🤖 Добавить бота в группу: /addgroup`);
+});
+
+// /addgroup
+bot.onText(/\/addgroup/, async (msg) => {
+    const chatId = msg.chat.id;
+    const inviteLink = `https://t.me/GguhdxfBOT?startgroup&admin=delete_messages+restrict_members+invite_users+ban_users+pin_messages+change_info`;
     
-    await animateTyping(chatId, text, 1000);
+    await bot.sendMessage(chatId, `🤖 Добавьте меня в группу как администратора:\n\n🔗 [Нажмите сюда, чтобы добавить](${inviteLink})`, {
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true
+    });
 });
 
 // /app
@@ -149,37 +183,61 @@ bot.onText(/\/app/, async (msg) => {
     });
 });
 
-// /my_prefix
-bot.onText(/\/my_prefix/, async (msg) => {
+// ========== ОБРАБОТЧИК ДОБАВЛЕНИЯ В ГРУППУ ==========
+
+bot.on('new_chat_members', async (msg) => {
     const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const purchase = purchases.get(userId);
-    const text = purchase 
-        ? `🏷️ Твой префикс: [${purchase.prefix}]
-Куплен: ${new Date(purchase.date).toLocaleDateString()}`
-        : `❌ У тебя нет префикса
-
-Купить можно за 50 ⭐ через мини-приложение`;
-    await animateTyping(chatId, text, 1000);
-});
-
-// /prefix
-bot.onText(/\/prefix/, async (msg) => {
-    const chatId = msg.chat.id;
-    const text = `🏷️ Купить префикс
-💰 Цена: 50 ⭐ Telegram Stars
-
-Открой мини-приложение через /app и выбери свой префикс!`;
-    await animateTyping(chatId, text, 1000);
-});
-
-// ========== API ==========
-app.get('/api/balance', (req, res) => {
-    const userId = parseInt(req.headers['x-telegram-user-id']);
-    if (!userId) return res.json({ error: 'Не авторизован' });
     
-    const user = userBalance.get(userId) || { stars: 5, ultraUntil: null };
-    res.json({ stars: user.stars, ultraUntil: user.ultraUntil });
+    for (const member of msg.new_chat_members) {
+        if (member.id === bot.options.token.split(':')[0]) {
+            // Бота добавили в группу
+            if (isGroupVerified(chatId)) {
+                await bot.sendMessage(chatId, '✅ Группа уже верифицирована!');
+                return;
+            }
+            
+            const secretCode = generateSecretCode();
+            
+            pendingGroups.set(chatId, {
+                secretCode,
+                addedBy: msg.from.id,
+                addedByUsername: msg.from.username || msg.from.first_name,
+                date: new Date().toISOString()
+            });
+            
+            await bot.sendMessage(chatId, `🔐 Для активации бота отправьте в этот чат код:\n\n<code>${secretCode}</code>`, {
+                parse_mode: 'HTML'
+            });
+            
+            await bot.sendMessage(msg.from.id, `🔐 Вы добавили бота в группу.\nКод активации: <code>${secretCode}</code>`, {
+                parse_mode: 'HTML'
+            });
+        }
+    }
+});
+
+// Проверка кода в группе
+bot.onText(/^(.+)$/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const text = match[1];
+    
+    if (msg.chat.type === 'private') return;
+    
+    const pending = pendingGroups.get(chatId);
+    if (pending && text.trim() === pending.secretCode) {
+        verifiedGroups.set(chatId, {
+            verified: true,
+            secretCode: pending.secretCode,
+            addedBy: pending.addedBy,
+            addedByUsername: pending.addedByUsername,
+            verifiedAt: new Date().toISOString()
+        });
+        
+        pendingGroups.delete(chatId);
+        
+        await bot.sendMessage(chatId, `✅ Группа верифицирована! Команды: /help`);
+        await bot.sendMessage(pending.addedBy, `✅ Группа активирована!`);
+    }
 });
 
 // ========== ЗАПУСК ==========
@@ -187,4 +245,4 @@ app.listen(PORT, () => {
     console.log(`🌐 Web App сервер запущен на порту ${PORT}`);
 });
 
-console.log('🤖 Бот запущен! Анимация: 1 буква в секунду');
+console.log('🤖 Бот запущен!');
