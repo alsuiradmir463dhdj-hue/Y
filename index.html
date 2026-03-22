@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Префикс бот</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .price {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #2481cc);
+            text-align: center;
+            margin: 16px 0;
+        }
+        
+        .price small {
+            font-size: 14px;
+            font-weight: normal;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #cccccc);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin-bottom: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        button:active {
+            opacity: 0.8;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .message.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+        }
+        
+        .message.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+        
+        .info {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .prefix-list {
+            margin-top: 16px;
+        }
+        
+        .prefix-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #eeeeee);
+            font-size: 14px;
+        }
+        
+        .prefix-name {
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⭐ Купить префикс</h1>
+        
+        <div class="card">
+            <p style="text-align: center; margin-bottom: 8px;">Выбери или напиши свой префикс</p>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button onclick="selectPrefix('Помощник')" style="flex: 1; padding: 10px;">Помощник</button>
+                <button onclick="selectPrefix('Воин')" style="flex: 1; padding: 10px;">Воин</button>
+                <button onclick="selectPrefix('Маг')" style="flex: 1; padding: 10px;">Маг</button>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button onclick="selectPrefix('VIP')" style="flex: 1; padding: 10px;">VIP</button>
+                <button onclick="selectPrefix('Легенда')" style="flex: 1; padding: 10px;">Легенда</button>
+                <button onclick="selectPrefix('Мастер')" style="flex: 1; padding: 10px;">Мастер</button>
+            </div>
+            
+            <input type="text" id="customPrefix" placeholder="Или напиши свой префикс" maxlength="20">
+            
+            <div class="price">
+                50 ⭐
+                <small>Telegram Stars</small>
+            </div>
+            
+            <button id="buyBtn" onclick="buyPrefix()">💎 Купить префикс</button>
+            
+            <div id="message" class="message" style="display: none;"></div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">📋 Мои префиксы</h3>
+            <div id="myPrefixes" class="prefix-list">
+                <div class="prefix-item" style="color: var(--tg-theme-hint-color);">Нет купленных префиксов</div>
+            </div>
+        </div>
+        
+        <div class="info">
+            ⚠️ Префикс меняет только имя в группе<br>
+            Никаких дополнительных прав не даёт
+        </div>
+    </div>
+    
+    <script>
+        let tg = window.Telegram.WebApp;
+        let selectedPrefix = '';
+        
+        tg.ready();
+        tg.expand();
+        tg.MainButton.hide();
+        
+        // Загрузка купленных префиксов
+        async function loadMyPrefixes() {
+            try {
+                const response = await fetch('/api/my-prefixes', {
+                    headers: {
+                        'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || ''
+                    }
+                });
+                const data = await response.json();
+                
+                const container = document.getElementById('myPrefixes');
+                if (data.prefixes && data.prefixes.length > 0) {
+                    container.innerHTML = data.prefixes.map(p => 
+                        `<div class="prefix-item">
+                            <span class="prefix-name">[${p.prefix}]</span> 
+                            - куплен ${new Date(p.date).toLocaleDateString()}
+                        </div>`
+                    ).join('');
+                } else {
+                    container.innerHTML = '<div class="prefix-item" style="color: var(--tg-theme-hint-color);">Нет купленных префиксов</div>';
+                }
+            } catch (err) {
+                console.error('Ошибка загрузки префиксов:', err);
+            }
+        }
+        
+        function selectPrefix(prefix) {
+            selectedPrefix = prefix;
+            document.getElementById('customPrefix').value = prefix;
+        }
+        
+        async function buyPrefix() {
+            let prefix = document.getElementById('customPrefix').value.trim();
+            if (!prefix) {
+                showMessage('❌ Введи или выбери префикс', 'error');
+                return;
+            }
+            
+            if (prefix.length > 20) {
+                showMessage('❌ Префикс не длиннее 20 символов', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('buyBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Отправка...';
+            
+            try {
+                // Отправляем запрос на создание инвойса
+                const response = await fetch('/api/create-invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || ''
+                    },
+                    body: JSON.stringify({
+                        prefix: prefix,
+                        userId: tg.initDataUnsafe.user?.id,
+                        username: tg.initDataUnsafe.user?.username,
+                        firstName: tg.initDataUnsafe.user?.first_name
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.invoiceLink) {
+                    // Открываем ссылку на оплату
+                    tg.openTelegramLink(data.invoiceLink);
+                    showMessage('✅ Переход к оплате... После оплаты префикс будет выдан автоматически', 'success');
+                } else {
+                    showMessage('❌ Ошибка: ' + (data.error || 'Не удалось создать счёт'), 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Ошибка соединения', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💎 Купить префикс';
+            }
+        }
+        
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = 'block';
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Проверка успешной оплаты через параметры
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+            showMessage('✅ Оплата прошла! Префикс выдан в группе', 'success');
+            loadMyPrefixes();
+        }
+        
+        loadMyPrefixes();
+    </script>
+</body>
+</html>
