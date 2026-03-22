@@ -24,24 +24,20 @@ const captchaPending = new Map();
 const groupVerificationCodes = new Map();
 const animations = new Map();
 
-// ========== ТВОЙ URL ==========
-const APP_URL = 'https://alsuiradmir463dhdj-hue.github.io/Y';
-
-// ========== АНИМАЦИЯ ПЕЧАТИ ==========
-async function animateTyping(chatId, fullText, speed = 30) {
+// ========== АНИМАЦИЯ ==========
+async function animateTyping(chatId, fullText, speed = 70) {
     if (animations.has(chatId)) {
         clearInterval(animations.get(chatId).interval);
         animations.delete(chatId);
     }
     
-    const firstChar = fullText[0];
-    let currentText = firstChar;
-    let index = 1;
-    
-    const sentMsg = await bot.sendMessage(chatId, currentText, {
+    const sentMsg = await bot.sendMessage(chatId, '⬜', {
         parse_mode: 'HTML',
         disable_web_page_preview: true
     });
+    
+    let currentText = '';
+    let index = 0;
     
     const interval = setInterval(async () => {
         if (index >= fullText.length) {
@@ -84,16 +80,28 @@ async function waitForAnimation(chatId) {
     });
 }
 
+// ========== УДАЛЕНИЕ СООБЩЕНИЙ ==========
+async function deleteMessage(chatId, messageId) {
+    try {
+        await bot.deleteMessage(chatId, messageId);
+    } catch (err) {
+        // Игнорируем ошибки (сообщение уже удалено или нет прав)
+    }
+}
+
 // ========== MIDDLEWARE ==========
 app.use(express.json());
 app.use(express.static('public'));
 
-// ========== КОМАНДЫ БОТА ==========
+// ========== КОМАНДЫ БОТА С УДАЛЕНИЕМ ==========
 
-// /start
+// /start — удаляет команду пользователя
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
+    
+    // Удаляем команду пользователя
+    await deleteMessage(chatId, msg.message_id);
     
     if (!userBalance.has(userId)) {
         userBalance.set(userId, { stars: 5, ultraUntil: null });
@@ -107,22 +115,26 @@ bot.onText(/\/start/, async (msg) => {
 
 Спасибо, что используете меня!`;
     
-    await animateTyping(chatId, text, 30);
+    await animateTyping(chatId, text, 70);
     await waitForAnimation(chatId);
     
     await bot.sendMessage(chatId, '🚀 Нажмите кнопку ниже, чтобы открыть мини-приложение:', {
         reply_markup: {
             inline_keyboard: [[{
                 text: '🚀 Открыть мини-приложение',
-                web_app: { url: `${APP_URL}?user_id=${userId}` }
+                web_app: { url: `https://alsuiradmir463dhdj-hue.github.io/Y?user_id=${userId}` }
             }]]
         }
     });
 });
 
-// /help
+// /help — удаляет команду пользователя
 bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
+    
+    // Удаляем команду пользователя
+    await deleteMessage(chatId, msg.message_id);
+    
     const text = `📋 Команды:
 /start - приветствие с балансом
 /help - помощь
@@ -134,22 +146,57 @@ bot.onText(/\/help/, async (msg) => {
 
 👮‍♂️ Все настройки группы в мини-приложении!`;
     
-    await animateTyping(chatId, text, 30);
+    await animateTyping(chatId, text, 70);
 });
 
-// /app
+// /app — удаляет команду пользователя
 bot.onText(/\/app/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
+    
+    // Удаляем команду пользователя
+    await deleteMessage(chatId, msg.message_id);
     
     await bot.sendMessage(chatId, '🚀 Открываю мини-приложение...', {
         reply_markup: {
             inline_keyboard: [[{
                 text: '🔧 Открыть панель',
-                web_app: { url: `${APP_URL}?user_id=${userId}` }
+                web_app: { url: `https://alsuiradmir463dhdj-hue.github.io/Y?user_id=${userId}` }
             }]]
         }
     });
+});
+
+// /my_prefix — удаляет команду пользователя
+bot.onText(/\/my_prefix/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    await deleteMessage(chatId, msg.message_id);
+    
+    const purchase = purchases.get(userId);
+    const text = purchase 
+        ? `🏷️ Твой префикс: [${purchase.prefix}]
+Куплен: ${new Date(purchase.date).toLocaleDateString()}`
+        : `❌ У тебя нет префикса
+
+Купить можно за 50 ⭐ через мини-приложение`;
+    
+    await animateTyping(chatId, text, 70);
+});
+
+// /prefix — удаляет команду пользователя
+bot.onText(/\/prefix/, async (msg) => {
+    const chatId = msg.chat.id;
+    
+    await deleteMessage(chatId, msg.message_id);
+    
+    const text = `🏷️ Купить префикс
+💰 Цена: 50 ⭐ Telegram Stars
+
+Открой мини-приложение через /app и выбери свой префикс!`;
+    
+    await animateTyping(chatId, text, 70);
 });
 
 // ========== API ==========
