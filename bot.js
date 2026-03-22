@@ -16,19 +16,32 @@ const PORT = process.env.PORT || 3000;
 const verifiedGroups = new Map();
 const pendingGroups = new Map();
 const userBalance = new Map();
+const purchases = new Map();
+const pendingInvoices = new Map();
+const mutedUsers = new Map();
+const bannedUsers = new Map();
+const captchaPending = new Map();
+const groupVerificationCodes = new Map();
 
-// ========== АНИМАЦИЯ ПЕЧАТИ (1 БУКВА В 30 МС) ==========
+// ========== АНИМАЦИЯ ПЕЧАТИ (1 БУКВА В 30 МС, БЕЗ ПУСТОГО СООБЩЕНИЯ) ==========
 const animations = new Map();
 
-async function animateTyping(chatId, messageId, fullText, speed = 30) {
-    // Останавливаем предыдущую анимацию для этого чата
+async function animateTyping(chatId, fullText, speed = 30) {
+    // Останавливаем предыдущую анимацию
     if (animations.has(chatId)) {
         clearInterval(animations.get(chatId).interval);
         animations.delete(chatId);
     }
     
-    let currentText = '';
-    let index = 0;
+    // Отправляем ПЕРВУЮ букву сразу (без пустого сообщения)
+    const firstChar = fullText[0];
+    let currentText = firstChar;
+    let index = 1;
+    
+    const sentMsg = await bot.sendMessage(chatId, currentText, {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+    });
     
     const interval = setInterval(async () => {
         if (index >= fullText.length) {
@@ -43,19 +56,17 @@ async function animateTyping(chatId, messageId, fullText, speed = 30) {
         try {
             await bot.editMessageText(currentText, {
                 chat_id: chatId,
-                message_id: messageId,
+                message_id: sentMsg.message_id,
                 parse_mode: 'HTML'
             });
         } catch (err) {
-            // Если сообщение уже удалено или не найдено — останавливаем анимацию
-            if (err.response?.statusCode === 400) {
-                clearInterval(interval);
-                animations.delete(chatId);
-            }
+            clearInterval(interval);
+            animations.delete(chatId);
         }
     }, speed);
     
-    animations.set(chatId, { interval });
+    animations.set(chatId, { interval, messageId: sentMsg.message_id });
+    return sentMsg;
 }
 
 // ========== MIDDLEWARE ==========
@@ -64,27 +75,31 @@ app.use(express.static('public'));
 
 // ========== КОМАНДЫ БОТА ==========
 
-// /start — с быстрой анимацией
+// /start — без белого квадрата, без мыши
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     
-    // Бонус 5 звёзд
+    // Бонус 5 звёзд при первом запуске
     if (!userBalance.has(userId)) {
         userBalance.set(userId, { stars: 5, ultraUntil: null });
     }
     
     const balance = userBalance.get(userId);
+    
     const text = `👋 Привет, ${msg.from.first_name}!
 
-⭐ Баланс: ${balance.stars} звёзд
+⭐ Ваш баланс: ${balance.stars} звёзд
 
 Спасибо, что используете меня!
 
 🚀 Нажмите кнопку ниже, чтобы открыть мини-приложение.`;
     
-    // Отправляем пустое сообщение
-    const sentMsg = await bot.sendMessage(chatId, '⬜', {
+    // Отправляем сообщение с анимацией и кнопкой
+    await animateTyping(chatId, text, 30);
+    
+    // Отправляем кнопку отдельным сообщением (чтобы не мешала анимации)
+    await bot.sendMessage(chatId, '🔽 Нажмите кнопку ниже:', {
         reply_markup: {
             inline_keyboard: [[{
                 text: '🚀 Открыть мини-приложение',
@@ -92,9 +107,6 @@ bot.onText(/\/start/, async (msg) => {
             }]]
         }
     });
-    
-    // Запускаем быструю анимацию (1 буква в 30 мс)
-    await animateTyping(chatId, sentMsg.message_id, text, 30);
 });
 
 // /help
@@ -105,10 +117,13 @@ bot.onText(/\/help/, async (msg) => {
 /help - помощь
 /app - открыть мини-приложение
 
-⭐ Звёзды можно потратить на префиксы и ULTRA подписку`;
+⭐ Звёзды можно потратить на:
+• Префикс — 50 ⭐
+• ULTRA подписка — 5 ⭐
+
+👮‍♂️ Все настройки группы в мини-приложении!`;
     
-    const sentMsg = await bot.sendMessage(chatId, '⬜');
-    await animateTyping(chatId, sentMsg.message_id, text, 30);
+    await animateTyping(chatId, text, 30);
 });
 
 // /app — открыть мини-приложение
@@ -140,4 +155,4 @@ app.listen(PORT, () => {
     console.log(`🌐 Web App сервер запущен на порту ${PORT}`);
 });
 
-console.log('🤖 Бот запущен! Анимация: 1 буква / 30 мс');
+console.log('🤖 Бот запущен! Анимация: 1 буква / 30 мс, без пустых сообщений');
