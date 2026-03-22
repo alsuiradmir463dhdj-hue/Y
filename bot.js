@@ -1,6 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
-const path = require('path');
 require('dotenv').config();
 
 const token = process.env.BOT_TOKEN;
@@ -10,31 +9,27 @@ if (!token) {
 }
 
 const bot = new TelegramBot(token, { polling: true });
-const app = express();  // <--- ЭТО ДОЛЖНО БЫТЬ ПЕРЕД ВСЕМИ app.get()
-
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== Middleware ==========
-app.use(express.json());
-app.use(express.static('public'));
-
 // ========== ХРАНИЛИЩА ==========
-const purchases = new Map();
-const pendingInvoices = new Map();
-const verifiedGroups = new Map();
-const pendingGroups = new Map();
-const mutedUsers = new Map();
-const bannedUsers = new Map();
-const captchaPending = new Map();
-const groupVerificationCodes = new Map();
+const purchases = new Map();           // userId -> { prefix, date }
+const pendingInvoices = new Map();     // invoiceId -> { userId, prefix, type }
+const verifiedGroups = new Map();      // groupId -> { verified, settings, ultraAdmins }
+const pendingGroups = new Map();       // groupId -> { secretCode, addedBy }
+const mutedUsers = new Map();          // groupId_userId -> { until, reason }
+const bannedUsers = new Map();         // groupId_userId -> { reason }
+const captchaPending = new Map();      // groupId_userId -> { code }
+const groupVerificationCodes = new Map(); // groupId -> { code, userId }
+const userBalance = new Map();         // userId -> { stars, ultraUntil }
+const spamWarnings = new Map();        // groupId_userId -> { count, lastMessageTime }
+const userActions = new Map();         // userId -> [{ action, date, groupId }]
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 
 function generateSecretCode() {
     const words = ['яблоко', 'груша', 'вишня', 'персик', 'манго', 'киви', 'лимон', 'апельсин'];
-    const word = words[Math.floor(Math.random() * words.length)];
-    const number = Math.floor(Math.random() * 100);
-    return `${word}${number}`;
+    return `${words[Math.floor(Math.random() * words.length)]}${Math.floor(Math.random() * 100)}`;
 }
 
 function generateCaptcha() {
@@ -45,8 +40,7 @@ function generateCaptcha() {
 }
 
 function isGroupVerified(chatId) {
-    const verified = verifiedGroups.get(chatId);
-    return verified && verified.verified === true;
+    return verifiedGroups.get(chatId)?.verified === true;
 }
 
 function isMuted(chatId, userId) {
@@ -64,13 +58,22 @@ function isBanned(chatId, userId) {
     return bannedUsers.has(`${chatId}_${userId}`);
 }
 
+function isUltraAdmin(chatId, userId) {
+    const group = verifiedGroups.get(chatId);
+    return group?.ultraAdmins?.includes(userId) || false;
+}
+
+function hasUltraSubscription(userId) {
+    const user = userBalance.get(userId);
+    if (!user?.ultraUntil) return false;
+    return user.ultraUntil > Date.now();
+}
+
 async function isAdminInGroup(chatId, userId) {
     try {
         const member = await bot.getChatMember(chatId, userId);
         return member.status === 'administrator' || member.status === 'creator';
-    } catch {
-        return false;
-    }
+    } catch { return false; }
 }
 
 // Middleware для проверки админа
@@ -89,7 +92,7 @@ async function adminGuard(req, res, next) {
     next();
 }
 
-// ========== НАСТОЯЩИЙ МУТ И БАН ==========
+// ========== МУТ И БАН ==========
 
 async function muteUserReal(chatId, userId, durationSeconds, reason = 'Не указана', username = '') {
     try {
@@ -143,13 +146,52 @@ async function unbanUserReal(chatId, userId, username = '') {
     } catch (err) { return false; }
 }
 
-// ========== АНИМАЦИЯ ==========
+// ========== АНТИСПАМ И АНТИФЛУД ==========
+
+async function checkSpam(chatId, userId, messageText) {
+    const key = `${chatId}_${userId}`;
+    const now = Date.now();
+    const warnings = spamWarnings.get(key) || { count: 0, lastMessageTime: 0, messages: [] };
+    
+    // Очищаем старые сообщения (старше 10 секунд)
+    warnings.messages = (warnings.messages || []).filter(t => now - t < 10000);
+    warnings.messages.push(now);
+    
+    // Проверка на флуд: больше 5 сообщений за 10 секунд
+    if (warnings.messages.length > 5) {
+        await muteUserReal(chatId, userId, 60, 'Флуд (автоматически)', `@${userId}`);
+        spamWarnings.delete(key);
+        return true;
+    }
+    
+    // Проверка на спам: одинаковые сообщения подряд
+    const lastMessage = warnings.lastMessageText;
+    if (lastMessage === messageText && messageText.length > 3) {
+        warnings.sameCount = (warnings.sameCount || 0) + 1;
+        if (warnings.sameCount > 3) {
+            await muteUserReal(chatId, userId, 300, 'Спам (повторяющиеся сообщения)', `@${userId}`);
+            spamWarnings.delete(key);
+            return true;
+        }
+    } else {
+        warnings.sameCount = 0;
+    }
+    
+    warnings.lastMessageText = messageText;
+    warnings.lastMessageTime = now;
+    spamWarnings.set(key, warnings);
+    return false;
+}
+
+// ========== АНИМАЦИЯ ПЕЧАТИ (1 БУКВА В 30 МС) ==========
 const animations = new Map();
 
-async function animateTyping(chatId, messageId, fullText, speed = 100) {
+async function animateTyping(chatId, messageId, fullText, speed = 30) {
     if (animations.has(chatId)) clearInterval(animations.get(chatId).interval);
+    
     let currentText = '';
     let index = 0;
+    
     const interval = setInterval(async () => {
         if (index >= fullText.length) {
             clearInterval(interval);
@@ -162,21 +204,84 @@ async function animateTyping(chatId, messageId, fullText, speed = 100) {
             await bot.editMessageText(currentText, { chat_id: chatId, message_id: messageId, parse_mode: 'HTML' });
         } catch (err) {}
     }, speed);
+    
     animations.set(chatId, { interval });
 }
 
-function getMainKeyboard() {
-    return {
-        reply_markup: {
-            keyboard: [[{ text: '🚀 Купить префикс', web_app: { url: 'https://your-domain.com' } }], [{ text: '📋 Помощь' }, { text: '💰 Мой префикс' }]],
-            resize_keyboard: true
-        }
-    };
-}
+// ========== MIDDLEWARE ==========
+app.use(express.json());
+app.use(express.static('public'));
 
 // ========== API ==========
 
-// API: получить мои группы
+// Получить баланс пользователя
+app.get('/api/balance', (req, res) => {
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
+    
+    const user = userBalance.get(userId) || { stars: 5, ultraUntil: null };
+    res.json({ stars: user.stars, ultraUntil: user.ultraUntil, hasUltra: hasUltraSubscription(userId) });
+});
+
+// Пополнить баланс (оплата звездами Telegram)
+app.post('/api/topup', async (req, res) => {
+    const { amount } = req.body;
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
+    
+    const invoiceId = Date.now().toString();
+    pendingInvoices.set(invoiceId, { userId, type: 'topup', amount });
+    
+    try {
+        const invoice = await bot.createInvoiceLink(
+            `Пополнение баланса на ${amount} ⭐`,
+            `Пополнение баланса на ${amount} звёзд`,
+            `topup_${invoiceId}`,
+            '',
+            'XTR',
+            [{ label: `${amount} Telegram Stars`, amount: amount }]
+        );
+        res.json({ invoiceLink: invoice });
+    } catch (err) {
+        res.json({ error: 'Не удалось создать счёт' });
+    }
+});
+
+// Купить ULTRA подписку (5 звёзд)
+app.post('/api/buy-ultra', async (req, res) => {
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
+    
+    const user = userBalance.get(userId) || { stars: 5 };
+    if (user.stars < 5) return res.json({ error: 'Недостаточно звёзд. Нужно 5 ⭐' });
+    
+    user.stars -= 5;
+    user.ultraUntil = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 дней
+    userBalance.set(userId, user);
+    
+    res.json({ success: true, stars: user.stars, ultraUntil: user.ultraUntil });
+});
+
+// Купить префикс (50 звёзд)
+app.post('/api/buy-prefix', async (req, res) => {
+    const { prefix } = req.body;
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
+    if (!prefix) return res.json({ error: 'Не указан префикс' });
+    if (prefix.toLowerCase() === 'админ') return res.json({ error: 'Префикс "Админ" недоступен для покупки' });
+    
+    const user = userBalance.get(userId) || { stars: 5 };
+    if (user.stars < 50) return res.json({ error: `Недостаточно звёзд. Нужно 50 ⭐. Ваш баланс: ${user.stars} ⭐` });
+    
+    user.stars -= 50;
+    userBalance.set(userId, user);
+    
+    purchases.set(userId, { prefix, date: new Date().toISOString() });
+    
+    res.json({ success: true, stars: user.stars, prefix: prefix });
+});
+
+// Получить список моих групп
 app.get('/api/my-groups', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ groups: [] });
@@ -201,7 +306,7 @@ app.get('/api/my-groups', async (req, res) => {
     res.json({ groups });
 });
 
-// API: сгенерировать код для верификации
+// Сгенерировать код для верификации группы
 app.post('/api/generate-code', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
@@ -222,7 +327,7 @@ app.post('/api/generate-code', async (req, res) => {
     res.json({ code, groupId: targetGroup.id });
 });
 
-// API: подтвердить группу
+// Подтвердить группу
 app.post('/api/verify-group', async (req, res) => {
     const { groupId, code } = req.body;
     const userId = parseInt(req.headers['x-telegram-user-id']);
@@ -241,7 +346,8 @@ app.post('/api/verify-group', async (req, res) => {
         addedBy: groupData.addedBy,
         addedByUsername: groupData.addedByUsername,
         verifiedAt: new Date().toISOString(),
-        settings: { captchaEnabled: true, respectEnabled: true, respects: new Map() }
+        settings: { captchaEnabled: true, respectEnabled: true, antiSpamEnabled: true, respects: new Map() },
+        ultraAdmins: []
     });
     
     pendingGroups.delete(parseInt(groupId));
@@ -252,88 +358,19 @@ app.post('/api/verify-group', async (req, res) => {
     res.json({ success: true });
 });
 
-// API: получить список пользователей
-app.get('/api/admin/users', adminGuard, async (req, res) => {
-    try {
-        const members = await bot.getChatAdministrators(req.groupId);
-        const users = members.map(m => ({
-            id: m.user.id, first_name: m.user.first_name, username: m.user.username,
-            is_muted: isMuted(req.groupId, m.user.id),
-            is_banned: isBanned(req.groupId, m.user.id),
-            is_admin: m.status === 'administrator' || m.status === 'creator'
-        }));
-        res.json({ users });
-    } catch (err) { res.json({ error: 'Ошибка' }); }
-});
-
-// API: замутить
-app.post('/api/admin/mute', adminGuard, async (req, res) => {
-    const { username, time, reason } = req.body;
-    try {
-        const members = await bot.getChatAdministrators(req.groupId);
-        const user = members.find(m => m.user.username === username);
-        if (!user) return res.json({ error: 'Пользователь не найден' });
-        
-        let seconds = 3600;
-        if (time) {
-            const val = parseInt(time);
-            const unit = time.slice(-1);
-            if (unit === 'm') seconds = val * 60;
-            if (unit === 'h') seconds = val * 3600;
-            if (unit === 'd') seconds = val * 86400;
-        }
-        
-        await muteUserReal(req.groupId, user.user.id, seconds, reason || 'Не указана', `@${username}`);
-        res.json({ success: true, message: `${user.user.first_name} замьючен` });
-    } catch (err) { res.json({ error: 'Ошибка' }); }
-});
-
-// API: размутить
-app.post('/api/admin/unmute', adminGuard, async (req, res) => {
-    const { username } = req.body;
-    try {
-        const members = await bot.getChatAdministrators(req.groupId);
-        const user = members.find(m => m.user.username === username);
-        if (!user) return res.json({ error: 'Пользователь не найден' });
-        
-        await unmuteUserReal(req.groupId, user.user.id, `@${username}`);
-        res.json({ success: true, message: `${user.user.first_name} размьючен` });
-    } catch (err) { res.json({ error: 'Ошибка' }); }
-});
-
-// API: забанить
-app.post('/api/admin/ban', adminGuard, async (req, res) => {
-    const { username, reason } = req.body;
-    try {
-        const members = await bot.getChatAdministrators(req.groupId);
-        const user = members.find(m => m.user.username === username);
-        if (!user) return res.json({ error: 'Пользователь не найден' });
-        
-        await banUserReal(req.groupId, user.user.id, reason || 'Не указана', `@${username}`);
-        res.json({ success: true, message: `${user.user.first_name} забанен` });
-    } catch (err) { res.json({ error: 'Ошибка' }); }
-});
-
-// API: разбанить
-app.post('/api/admin/unban', adminGuard, async (req, res) => {
-    const { username } = req.body;
-    try {
-        const members = await bot.getChatAdministrators(req.groupId);
-        const user = members.find(m => m.user.username === username);
-        if (!user) return res.json({ error: 'Пользователь не найден' });
-        
-        await unbanUserReal(req.groupId, user.user.id, `@${username}`);
-        res.json({ success: true, message: `${user.user.first_name} разбанен` });
-    } catch (err) { res.json({ error: 'Ошибка' }); }
-});
-
-// API: настройки группы
+// Получить настройки группы
 app.get('/api/admin/settings', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     const settings = group?.settings || {};
-    res.json({ welcome: settings.welcomeMsg || '', goodbye: settings.goodbyeMsg || '', captcha_enabled: settings.captchaEnabled !== false });
+    res.json({ 
+        welcome: settings.welcomeMsg || '', 
+        goodbye: settings.goodbyeMsg || '', 
+        captcha_enabled: settings.captchaEnabled !== false,
+        antiSpam_enabled: settings.antiSpamEnabled !== false
+    });
 });
 
+// Сохранить настройки
 app.post('/api/admin/setwelcome', adminGuard, async (req, res) => {
     const { welcome } = req.body;
     const group = verifiedGroups.get(req.groupId);
@@ -367,16 +404,94 @@ app.post('/api/admin/captcha', adminGuard, async (req, res) => {
     } else { res.json({ error: 'Группа не найдена' }); }
 });
 
-app.get('/api/admin/info', adminGuard, async (req, res) => {
+app.post('/api/admin/antispam', adminGuard, async (req, res) => {
+    const { enabled } = req.body;
+    const group = verifiedGroups.get(req.groupId);
+    if (group) {
+        if (!group.settings) group.settings = {};
+        group.settings.antiSpamEnabled = enabled;
+        verifiedGroups.set(req.groupId, group);
+        res.json({ success: true });
+    } else { res.json({ error: 'Группа не найдена' }); }
+});
+
+// Получить список пользователей
+app.get('/api/admin/users', adminGuard, async (req, res) => {
     try {
-        const chat = await bot.getChat(req.groupId);
-        const group = verifiedGroups.get(req.groupId);
-        const membersCount = await bot.getChatMembersCount(req.groupId);
-        res.json({ id: chat.id, title: chat.title, members_count: membersCount, captcha_enabled: group?.settings?.captchaEnabled !== false });
+        const members = await bot.getChatAdministrators(req.groupId);
+        const users = members.map(m => ({
+            id: m.user.id, first_name: m.user.first_name, username: m.user.username,
+            is_muted: isMuted(req.groupId, m.user.id),
+            is_banned: isBanned(req.groupId, m.user.id),
+            is_admin: m.status === 'administrator' || m.status === 'creator',
+            is_ultra: isUltraAdmin(req.groupId, m.user.id)
+        }));
+        res.json({ users });
     } catch (err) { res.json({ error: 'Ошибка' }); }
 });
 
-// API: префиксы
+// Мут
+app.post('/api/admin/mute', adminGuard, async (req, res) => {
+    const { username, time, reason } = req.body;
+    try {
+        const members = await bot.getChatAdministrators(req.groupId);
+        const user = members.find(m => m.user.username === username);
+        if (!user) return res.json({ error: 'Пользователь не найден' });
+        
+        let seconds = 3600;
+        if (time) {
+            const val = parseInt(time);
+            const unit = time.slice(-1);
+            if (unit === 'm') seconds = val * 60;
+            if (unit === 'h') seconds = val * 3600;
+            if (unit === 'd') seconds = val * 86400;
+        }
+        
+        await muteUserReal(req.groupId, user.user.id, seconds, reason || 'Не указана', `@${username}`);
+        res.json({ success: true, message: `${user.user.first_name} замьючен` });
+    } catch (err) { res.json({ error: 'Ошибка' }); }
+});
+
+// Размут
+app.post('/api/admin/unmute', adminGuard, async (req, res) => {
+    const { username } = req.body;
+    try {
+        const members = await bot.getChatAdministrators(req.groupId);
+        const user = members.find(m => m.user.username === username);
+        if (!user) return res.json({ error: 'Пользователь не найден' });
+        
+        await unmuteUserReal(req.groupId, user.user.id, `@${username}`);
+        res.json({ success: true, message: `${user.user.first_name} размьючен` });
+    } catch (err) { res.json({ error: 'Ошибка' }); }
+});
+
+// Бан
+app.post('/api/admin/ban', adminGuard, async (req, res) => {
+    const { username, reason } = req.body;
+    try {
+        const members = await bot.getChatAdministrators(req.groupId);
+        const user = members.find(m => m.user.username === username);
+        if (!user) return res.json({ error: 'Пользователь не найден' });
+        
+        await banUserReal(req.groupId, user.user.id, reason || 'Не указана', `@${username}`);
+        res.json({ success: true, message: `${user.user.first_name} забанен` });
+    } catch (err) { res.json({ error: 'Ошибка' }); }
+});
+
+// Разбан
+app.post('/api/admin/unban', adminGuard, async (req, res) => {
+    const { username } = req.body;
+    try {
+        const members = await bot.getChatAdministrators(req.groupId);
+        const user = members.find(m => m.user.username === username);
+        if (!user) return res.json({ error: 'Пользователь не найден' });
+        
+        await unbanUserReal(req.groupId, user.user.id, `@${username}`);
+        res.json({ success: true, message: `${user.user.first_name} разбанен` });
+    } catch (err) { res.json({ error: 'Ошибка' }); }
+});
+
+// Префиксы
 app.get('/api/admin/prefixes', adminGuard, async (req, res) => {
     const groupPrefixes = [];
     for (const [userId, data] of purchases.entries()) {
@@ -387,6 +502,8 @@ app.get('/api/admin/prefixes', adminGuard, async (req, res) => {
 
 app.post('/api/admin/giveprefix', adminGuard, async (req, res) => {
     const { username, prefix } = req.body;
+    if (prefix.toLowerCase() === 'админ') return res.json({ error: 'Префикс "Админ" нельзя выдать' });
+    
     try {
         const members = await bot.getChatAdministrators(req.groupId);
         const user = members.find(m => m.user.username === username);
@@ -411,7 +528,7 @@ app.post('/api/admin/removeprefix', adminGuard, async (req, res) => {
     } else { res.json({ error: 'Префикс не найден' }); }
 });
 
-// API: респекты
+// Респекты
 app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     const respects = group?.settings?.respects || new Map();
@@ -437,8 +554,120 @@ app.post('/api/admin/respect-toggle', adminGuard, async (req, res) => {
     } else { res.json({ error: 'Группа не найдена' }); }
 });
 
+// Информация о группе
+app.get('/api/admin/info', adminGuard, async (req, res) => {
+    try {
+        const chat = await bot.getChat(req.groupId);
+        const group = verifiedGroups.get(req.groupId);
+        const membersCount = await bot.getChatMembersCount(req.groupId);
+        res.json({ 
+            id: chat.id, 
+            title: chat.title, 
+            members_count: membersCount, 
+            captcha_enabled: group?.settings?.captchaEnabled !== false,
+            antiSpam_enabled: group?.settings?.antiSpamEnabled !== false
+        });
+    } catch (err) { res.json({ error: 'Ошибка' }); }
+});
+
 // ========== КОМАНДЫ БОТА ==========
 
+// /start — приветствие с балансом и кнопкой открыть приложение
+bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Бонус 5 звёзд при первом запуске
+    let user = userBalance.get(userId);
+    if (!user) {
+        user = { stars: 5, ultraUntil: null };
+        userBalance.set(userId, user);
+        await bot.sendMessage(chatId, `🎉 Добро пожаловать! Вам начислено 5 ⭐ бонусных звёзд!`);
+    }
+    
+    const stars = user.stars;
+    const hasUltra = hasUltraSubscription(userId);
+    
+    const text = `👋 Привет, ${msg.from.first_name}!
+
+⭐ Ваш баланс: ${stars} звёзд
+${hasUltra ? '🌟 ULTRA подписка активна!' : '💎 ULTRA подписка неактивна'}
+
+Спасибо, что используете меня! 
+
+✨ 5 бонусных звёзд уже на вашем счету.
+⭐ Звёзды тратятся на префиксы и ULTRA подписку.
+
+Нажмите кнопку ниже, чтобы открыть мини-приложение.`;
+    
+    const sentMsg = await bot.sendMessage(chatId, text, {
+        reply_markup: {
+            inline_keyboard: [[{
+                text: '🚀 Открыть мини-приложение',
+                web_app: { url: `https://your-domain.com?user_id=${userId}` }
+            }]]
+        }
+    });
+    
+    await animateTyping(chatId, sentMsg.message_id, text, 30);
+});
+
+// /help
+bot.onText(/\/help/, async (msg) => {
+    const chatId = msg.chat.id;
+    const sentMsg = await bot.sendMessage(chatId, '');
+    const text = `📋 Команды:
+/start - приветствие с балансом
+/help - помощь
+/app - открыть мини-приложение
+
+⭐ Звёзды можно потратить на:
+• Префикс — 50 ⭐
+• ULTRA подписка для админа — 5 ⭐
+
+👮‍♂️ Все настройки группы в мини-приложении!`;
+    await animateTyping(chatId, sentMsg.message_id, text, 30);
+});
+
+// /app — открыть мини-приложение
+bot.onText(/\/app/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    await bot.sendMessage(chatId, '🚀 Открываю мини-приложение...', {
+        reply_markup: {
+            inline_keyboard: [[{
+                text: '🔧 Открыть панель управления',
+                web_app: { url: `https://your-domain.com?user_id=${userId}` }
+            }]]
+        }
+    });
+});
+
+// ========== ОБРАБОТЧИКИ СООБЩЕНИЙ ==========
+
+// Антиспам
+bot.on('message', async (msg) => {
+    if (msg.chat.type === 'private') return;
+    if (!isGroupVerified(msg.chat.id)) return;
+    
+    const group = verifiedGroups.get(msg.chat.id);
+    if (group?.settings?.antiSpamEnabled !== false) {
+        const isSpam = await checkSpam(msg.chat.id, msg.from.id, msg.text || '');
+        if (isSpam) {
+            try { await bot.deleteMessage(msg.chat.id, msg.message_id); } catch (err) {}
+            return;
+        }
+    }
+    
+    if (isMuted(msg.chat.id, msg.from.id)) {
+        try { await bot.deleteMessage(msg.chat.id, msg.message_id); } catch (err) {}
+        const muted = mutedUsers.get(`${msg.chat.id}_${msg.from.id}`);
+        await bot.sendMessage(msg.chat.id, `🔇 ${msg.from.first_name}, вы замьючены до ${new Date(muted.until).toLocaleString()}\nПричина: ${muted.reason}`);
+    }
+});
+
+// Верификация группы и капча
 bot.on('new_chat_members', async (msg) => {
     const chatId = msg.chat.id;
     for (const member of msg.new_chat_members) {
@@ -497,14 +726,22 @@ bot.onText(/^(.+)$/, async (msg, match) => {
     
     const pending = pendingGroups.get(chatId);
     if (pending && text.trim() === pending.secretCode) {
-        verifiedGroups.set(chatId, { verified: true, secretCode: pending.secretCode, addedBy: pending.addedBy, addedByUsername: pending.addedByUsername, verifiedAt: new Date().toISOString(), settings: { captchaEnabled: true, respectEnabled: true, respects: new Map() } });
+        verifiedGroups.set(chatId, { 
+            verified: true, 
+            secretCode: pending.secretCode, 
+            addedBy: pending.addedBy, 
+            addedByUsername: pending.addedByUsername, 
+            verifiedAt: new Date().toISOString(), 
+            settings: { captchaEnabled: true, respectEnabled: true, antiSpamEnabled: true, respects: new Map() },
+            ultraAdmins: []
+        });
         pendingGroups.delete(chatId);
-        await bot.sendMessage(chatId, `✅ Группа верифицирована! Команды: /help`);
+        await bot.sendMessage(chatId, `✅ Группа верифицирована! Все настройки в мини-приложении.`);
         await bot.sendMessage(pending.addedBy, `✅ Группа активирована!`);
     }
 });
 
-// Респекты в чате
+// Респекты
 bot.onText(/^\+респект @(\w+)$/i, async (msg, match) => {
     const chatId = msg.chat.id;
     const fromId = msg.from.id;
@@ -552,47 +789,46 @@ bot.on('message', async (msg) => {
     await bot.sendMessage(chatId, `⭐ ${msg.from.first_name} дал респект ${msg.reply_to_message.from.first_name}! Всего респектов: ${current + 1}`);
 });
 
-// Команды бота
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '');
-    const fullText = `👋 Привет, ${msg.from.first_name}!\nЯ бот для групп. Добавь меня в группу и активируй кодом.\n\n⭐ Можешь купить префикс за 50 Telegram Stars!`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
+// Обработка оплаты
+bot.on('pre_checkout_query', async (query) => {
+    const payload = query.invoice_payload;
+    const pending = pendingInvoices.get(payload.replace('topup_', '').replace('prefix_', ''));
+    if (pending) {
+        await bot.answerPreCheckoutQuery(query.id, true);
+    } else {
+        await bot.answerPreCheckoutQuery(query.id, false, 'Ошибка');
+    }
 });
 
-bot.onText(/\/help/, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '');
-    const fullText = `📋 Команды:\n/start - приветствие\n/help - помощь\n/my_prefix - мой префикс\n/prefix - купить префикс\n\n👮‍♂️ Админ-команды через панель: /admin\n\n⭐ Префикс = 50 Telegram Stars`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
-});
-
-bot.onText(/\/admin/, async (msg) => {
-    const chatId = msg.chat.id;
+bot.on('successful_payment', async (msg) => {
     const userId = msg.from.id;
+    const payload = msg.successful_payment.invoice_payload;
     
-    if (!isGroupVerified(chatId)) {
-        await bot.sendMessage(chatId, '⚠️ Группа не активирована. Добавьте бота и подтвердите код.');
-        return;
-    }
-    
-    if (!await isAdminInGroup(chatId, userId)) {
-        await bot.sendMessage(chatId, '❌ Только администраторы группы могут открыть панель');
-        return;
-    }
-    
-    const webAppUrl = `https://your-domain.com?group_id=${chatId}`;
-    await bot.sendMessage(chatId, '🛡️ Панель управления ботом', {
-        reply_markup: {
-            inline_keyboard: [[{
-                text: '🔧 Открыть панель',
-                web_app: { url: webAppUrl }
-            }]]
+    if (payload.startsWith('topup_')) {
+        const invoiceId = payload.replace('topup_', '');
+        const pending = pendingInvoices.get(invoiceId);
+        if (pending && pending.type === 'topup') {
+            const user = userBalance.get(userId) || { stars: 0 };
+            user.stars += pending.amount;
+            userBalance.set(userId, user);
+            pendingInvoices.delete(invoiceId);
+            await bot.sendMessage(userId, `✅ Баланс пополнен на ${pending.amount} ⭐! Теперь у вас ${user.stars} ⭐`);
         }
-    });
+    } else if (payload.startsWith('prefix_')) {
+        const invoiceId = payload.replace('prefix_', '');
+        const pending = pendingInvoices.get(invoiceId);
+        if (pending && pending.type === 'prefix') {
+            const user = userBalance.get(userId) || { stars: 0 };
+            user.stars -= pending.price;
+            userBalance.set(userId, user);
+            purchases.set(userId, { prefix: pending.prefix, date: new Date().toISOString() });
+            pendingInvoices.delete(invoiceId);
+            await bot.sendMessage(userId, `✅ Вы купили префикс [${pending.prefix}]!`);
+        }
+    }
 });
 
-// ========== ЗАПУСК СЕРВЕРА ==========
+// ========== ЗАПУСК ==========
 app.listen(PORT, () => {
     console.log(`🌐 Web App сервер запущен на порту ${PORT}`);
 });
