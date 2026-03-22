@@ -3,54 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Префикс бот</title>
+    <title>Bot Panel</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
-            padding: 20px;
+            padding: 16px;
         }
-        
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 24px; margin-bottom: 20px; text-align: center; }
+        h2 { font-size: 18px; margin-bottom: 12px; margin-top: 20px; }
         .card {
             background: var(--tg-theme-secondary-bg-color, #f5f5f5);
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             margin-bottom: 16px;
         }
-        
-        .price {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #2481cc);
-            text-align: center;
-            margin: 16px 0;
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
         }
-        
-        .price small {
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
             font-size: 14px;
-            font-weight: normal;
+            color: var(--tg-theme-text-color, #000);
         }
-        
-        input {
+        .tab.active {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        input, select, textarea {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--tg-theme-hint-color, #cccccc);
@@ -58,13 +52,12 @@
             font-size: 16px;
             background: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             box-sizing: border-box;
         }
-        
         button {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             background: var(--tg-theme-button-color, #2481cc);
             color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
@@ -72,207 +65,252 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            margin-bottom: 8px;
         }
-        
-        button:active {
-            opacity: 0.8;
-        }
-        
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .message {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 14px;
-        }
-        
-        .message.success {
-            background: rgba(76, 175, 80, 0.1);
-            color: #4caf50;
-        }
-        
-        .message.error {
-            background: rgba(244, 67, 54, 0.1);
-            color: #f44336;
-        }
-        
-        .info {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
-            text-align: center;
-            margin-top: 20px;
-        }
-        
-        .prefix-list {
-            margin-top: 16px;
-        }
-        
-        .prefix-item {
-            padding: 10px;
-            border-bottom: 1px solid var(--tg-theme-hint-color, #eeeeee);
-            font-size: 14px;
-        }
-        
-        .prefix-name {
+        button.danger { background: #dc3545; }
+        button.warning { background: #ffc107; color: #000; }
+        .price {
+            font-size: 32px;
             font-weight: bold;
             color: var(--tg-theme-button-color, #2481cc);
+            text-align: center;
+            margin: 16px 0;
         }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #eee);
+        }
+        .user-name { font-weight: 500; }
+        .user-actions { display: flex; gap: 8px; }
+        .user-actions button { padding: 6px 12px; font-size: 12px; width: auto; margin: 0; }
+        .status-badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #ffc107;
+            color: #000;
+        }
+        .status-badge.muted { background: #ff9800; }
+        .status-badge.banned { background: #dc3545; color: #fff; }
+        .message {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        .message.success { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .message.error { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+        .switch {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .switch input { width: 50px; margin: 0; }
+        .info-text { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 4px; }
+        .loading { text-align: center; padding: 20px; color: var(--tg-theme-hint-color, #999); }
+        .btn-group { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .btn-group button { flex: 1; padding: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⭐ Купить префикс</h1>
+        <h1>⭐ Bot Panel</h1>
         
-        <div class="card">
-            <p style="text-align: center; margin-bottom: 8px;">Выбери или напиши свой префикс</p>
-            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                <button onclick="selectPrefix('Помощник')" style="flex: 1; padding: 10px;">Помощник</button>
-                <button onclick="selectPrefix('Воин')" style="flex: 1; padding: 10px;">Воин</button>
-                <button onclick="selectPrefix('Маг')" style="flex: 1; padding: 10px;">Маг</button>
-            </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                <button onclick="selectPrefix('VIP')" style="flex: 1; padding: 10px;">VIP</button>
-                <button onclick="selectPrefix('Легенда')" style="flex: 1; padding: 10px;">Легенда</button>
-                <button onclick="selectPrefix('Мастер')" style="flex: 1; padding: 10px;">Мастер</button>
-            </div>
-            
-            <input type="text" id="customPrefix" placeholder="Или напиши свой префикс" maxlength="20">
-            
-            <div class="price">
-                50 ⭐
-                <small>Telegram Stars</small>
-            </div>
-            
-            <button id="buyBtn" onclick="buyPrefix()">💎 Купить префикс</button>
-            
-            <div id="message" class="message" style="display: none;"></div>
+        <div class="tab-bar">
+            <button class="tab active" onclick="switchTab('buy')">💎 Купить</button>
+            <button class="tab" onclick="switchTab('users')">👥 Пользователи</button>
+            <button class="tab" onclick="switchTab('moderation')">🔨 Модерация</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ Настройки</button>
+            <button class="tab" onclick="switchTab('prefixes')">🏷️ Префиксы</button>
         </div>
         
-        <div class="card">
-            <h3 style="margin-bottom: 12px;">📋 Мои префиксы</h3>
-            <div id="myPrefixes" class="prefix-list">
-                <div class="prefix-item" style="color: var(--tg-theme-hint-color);">Нет купленных префиксов</div>
+        <!-- Вкладка: Покупка префикса -->
+        <div id="tab-buy" class="tab-content active">
+            <div class="card">
+                <p style="text-align: center; margin-bottom: 8px;">Выбери или напиши свой префикс</p>
+                <div class="btn-group">
+                    <button onclick="selectPrefix('Помощник')">Помощник</button>
+                    <button onclick="selectPrefix('Воин')">Воин</button>
+                    <button onclick="selectPrefix('Маг')">Маг</button>
+                </div>
+                <div class="btn-group">
+                    <button onclick="selectPrefix('VIP')">VIP</button>
+                    <button onclick="selectPrefix('Легенда')">Легенда</button>
+                    <button onclick="selectPrefix('Мастер')">Мастер</button>
+                </div>
+                <input type="text" id="customPrefix" placeholder="Или напиши свой префикс" maxlength="20">
+                <div class="price">50 ⭐ <small>Telegram Stars</small></div>
+                <button id="buyBtn" onclick="buyPrefix()">💎 Купить префикс</button>
+                <div id="buyMessage" class="message"></div>
             </div>
         </div>
         
-        <div class="info">
-            ⚠️ Префикс меняет только имя в группе<br>
-            Никаких дополнительных прав не даёт
+        <!-- Вкладка: Пользователи -->
+        <div id="tab-users" class="tab-content">
+            <div class="card">
+                <input type="text" id="searchUser" placeholder="Поиск по имени" onkeyup="searchUsers()">
+                <div id="usersList"><div class="loading">Загрузка...</div></div>
+            </div>
+        </div>
+        
+        <!-- Вкладка: Модерация -->
+        <div id="tab-moderation" class="tab-content">
+            <div class="card">
+                <h2>🔇 Мут</h2>
+                <input type="text" id="muteUsername" placeholder="@username">
+                <select id="muteTime">
+                    <option value="5m">5 минут</option><option value="30m">30 минут</option>
+                    <option value="1h" selected>1 час</option><option value="6h">6 часов</option>
+                    <option value="1d">1 день</option><option value="7d">7 дней</option>
+                </select>
+                <input type="text" id="muteReason" placeholder="Причина">
+                <button onclick="muteUser()">🔇 Замутить</button>
+            </div>
+            <div class="card">
+                <h2>🔨 Бан</h2>
+                <input type="text" id="banUsername" placeholder="@username">
+                <input type="text" id="banReason" placeholder="Причина">
+                <button class="danger" onclick="banUser()">🔨 Забанить</button>
+            </div>
+            <div class="card">
+                <h2>✅ Размут / Разбан</h2>
+                <input type="text" id="unmuteUsername" placeholder="@username для размута">
+                <button onclick="unmuteUser()">🔊 Размутить</button>
+                <input type="text" id="unbanUsername" placeholder="@username для разбана" style="margin-top:12px;">
+                <button class="warning" onclick="unbanUser()">✅ Разбанить</button>
+            </div>
+            <div id="modMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Настройки -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card">
+                <h2>👋 Приветствие</h2>
+                <textarea id="welcomeMsg" rows="2" placeholder="Текст. {name} = имя"></textarea>
+                <button onclick="saveWelcome()">💾 Сохранить</button>
+            </div>
+            <div class="card">
+                <h2>👋 Прощание</h2>
+                <textarea id="goodbyeMsg" rows="2" placeholder="Текст. {name} = имя"></textarea>
+                <button onclick="saveGoodbye()">💾 Сохранить</button>
+            </div>
+            <div class="card">
+                <h2>🔒 Капча</h2>
+                <div class="switch"><label>Включить капчу</label><input type="checkbox" id="captchaEnabled" onchange="toggleCaptcha()"></div>
+            </div>
+            <div class="card">
+                <h2>📊 Информация</h2>
+                <button onclick="loadGroupInfo()">🔄 Обновить</button>
+                <div id="groupInfo" style="margin-top:12px; font-size:14px;"></div>
+            </div>
+            <div id="setMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Префиксы -->
+        <div id="tab-prefixes" class="tab-content">
+            <div class="card">
+                <h2>🏷️ Выдать префикс</h2>
+                <input type="text" id="prefixUser" placeholder="@username">
+                <input type="text" id="prefixName" placeholder="Префикс">
+                <button onclick="givePrefix()">🎁 Выдать</button>
+            </div>
+            <div class="card">
+                <h2>📋 Список префиксов</h2>
+                <div id="prefixesList"><div class="loading">Загрузка...</div></div>
+            </div>
+            <div id="prefMessage" class="message"></div>
         </div>
     </div>
     
     <script>
         let tg = window.Telegram.WebApp;
-        let selectedPrefix = '';
-        
         tg.ready();
         tg.expand();
-        tg.MainButton.hide();
         
-        // Загрузка купленных префиксов
-        async function loadMyPrefixes() {
+        let currentGroupId = null;
+        let currentUserId = tg.initDataUnsafe?.user?.id || null;
+        let selectedPrefix = '';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        currentGroupId = urlParams.get('group_id');
+        
+        function showMessage(elId, text, type) {
+            let el = document.getElementById(elId);
+            if (!el) return;
+            el.textContent = text;
+            el.className = `message ${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            event.target.classList.add('active');
+            if (tab === 'users') loadUsers();
+            if (tab === 'prefixes') loadPrefixes();
+            if (tab === 'settings') loadSettings();
+        }
+        
+        async function callAPI(endpoint, method = 'GET', data = null) {
             try {
-                const response = await fetch('/api/my-prefixes', {
-                    headers: {
-                        'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || ''
-                    }
-                });
-                const data = await response.json();
-                
-                const container = document.getElementById('myPrefixes');
-                if (data.prefixes && data.prefixes.length > 0) {
-                    container.innerHTML = data.prefixes.map(p => 
-                        `<div class="prefix-item">
-                            <span class="prefix-name">[${p.prefix}]</span> 
-                            - куплен ${new Date(p.date).toLocaleDateString()}
-                        </div>`
-                    ).join('');
-                } else {
-                    container.innerHTML = '<div class="prefix-item" style="color: var(--tg-theme-hint-color);">Нет купленных префиксов</div>';
-                }
-            } catch (err) {
-                console.error('Ошибка загрузки префиксов:', err);
-            }
+                let options = { method, headers: { 'Content-Type': 'application/json', 'X-Telegram-User-Id': currentUserId, 'X-Telegram-Group-Id': currentGroupId } };
+                if (data) options.body = JSON.stringify(data);
+                let res = await fetch(`/api/admin${endpoint}`, options);
+                return await res.json();
+            } catch(e) { return { error: 'Ошибка' }; }
         }
         
-        function selectPrefix(prefix) {
-            selectedPrefix = prefix;
-            document.getElementById('customPrefix').value = prefix;
-        }
+        function selectPrefix(p) { selectedPrefix = p; document.getElementById('customPrefix').value = p; }
         
         async function buyPrefix() {
             let prefix = document.getElementById('customPrefix').value.trim();
-            if (!prefix) {
-                showMessage('❌ Введи или выбери префикс', 'error');
-                return;
-            }
-            
-            if (prefix.length > 20) {
-                showMessage('❌ Префикс не длиннее 20 символов', 'error');
-                return;
-            }
-            
-            const btn = document.getElementById('buyBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Отправка...';
-            
-            try {
-                // Отправляем запрос на создание инвойса
-                const response = await fetch('/api/create-invoice', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || ''
-                    },
-                    body: JSON.stringify({
-                        prefix: prefix,
-                        userId: tg.initDataUnsafe.user?.id,
-                        username: tg.initDataUnsafe.user?.username,
-                        firstName: tg.initDataUnsafe.user?.first_name
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.invoiceLink) {
-                    // Открываем ссылку на оплату
-                    tg.openTelegramLink(data.invoiceLink);
-                    showMessage('✅ Переход к оплате... После оплаты префикс будет выдан автоматически', 'success');
-                } else {
-                    showMessage('❌ Ошибка: ' + (data.error || 'Не удалось создать счёт'), 'error');
-                }
-            } catch (err) {
-                showMessage('❌ Ошибка соединения', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '💎 Купить префикс';
-            }
+            if (!prefix) { showMessage('buyMessage', '❌ Введи префикс', 'error'); return; }
+            let btn = document.getElementById('buyBtn');
+            btn.disabled = true; btn.textContent = '⏳...';
+            let res = await fetch('/api/create-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, userId: currentUserId, firstName: tg.initDataUnsafe?.user?.first_name }) });
+            let data = await res.json();
+            if (data.invoiceLink) { tg.openTelegramLink(data.invoiceLink); showMessage('buyMessage', '✅ Переход к оплате', 'success'); }
+            else { showMessage('buyMessage', '❌ Ошибка', 'error'); }
+            btn.disabled = false; btn.textContent = '💎 Купить префикс';
         }
         
-        function showMessage(text, type) {
-            const msgDiv = document.getElementById('message');
-            msgDiv.textContent = text;
-            msgDiv.className = `message ${type}`;
-            msgDiv.style.display = 'block';
-            setTimeout(() => {
-                msgDiv.style.display = 'none';
-            }, 5000);
+        async function loadUsers() {
+            let container = document.getElementById('usersList');
+            container.innerHTML = '<div class="loading">Загрузка...</div>';
+            let res = await callAPI('/users');
+            if (res.error) { container.innerHTML = `<div class="loading">❌ ${res.error}</div>`; return; }
+            if (res.users?.length) {
+                container.innerHTML = res.users.map(u => `<div class="user-item"><div><div class="user-name">${u.first_name}</div><div style="font-size:12px;">@${u.username || 'нет'}</div>${u.is_muted ? '<span class="status-badge muted">🔇 Мут</span>' : ''}${u.is_banned ? '<span class="status-badge banned">🔨 Бан</span>' : ''}</div><div class="user-actions"><button onclick="quickMute(\'${u.username}\')">🔇</button><button class="danger" onclick="quickBan(\'${u.username}\')">🔨</button></div></div>`).join('');
+            } else { container.innerHTML = '<div class="loading">Нет пользователей</div>'; }
         }
         
-        // Проверка успешной оплаты через параметры
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success') === 'true') {
-            showMessage('✅ Оплата прошла! Префикс выдан в группе', 'success');
-            loadMyPrefixes();
-        }
+        function searchUsers() { let s = document.getElementById('searchUser').value.toLowerCase(); document.querySelectorAll('.user-item').forEach(i => { i.style.display = i.innerText.toLowerCase().includes(s) ? 'flex' : 'none'; }); }
         
-        loadMyPrefixes();
+        async function muteUser() { let u = document.getElementById('muteUsername').value, t = document.getElementById('muteTime').value, r = document.getElementById('muteReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/mute','POST',{username:u,time:t,reason:r}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('muteUsername').value=''; document.getElementById('muteReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function unmuteUser() { let u = document.getElementById('unmuteUsername').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/unmute','POST',{username:u}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('unmuteUsername').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function banUser() { let u = document.getElementById('banUsername').value, r = document.getElementById('banReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/ban','POST',{username:u,reason:r}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('banUsername').value=''; document.getElementById('banReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function unbanUser() { let u = document.getElementById('unbanUsername').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/unban','POST',{username:u}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('unbanUsername').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function quickMute(u) { document.getElementById('muteUsername').value=u; document.getElementById('muteTime').value='1h'; document.getElementById('muteReason').value='Модерация'; await muteUser(); }
+        async function quickBan(u) { document.getElementById('banUsername').value=u; document.getElementById('banReason').value='Нарушение'; await banUser(); }
+        
+        async function loadSettings() { let res = await callAPI('/settings'); if(!res.error){ if(res.welcome) document.getElementById('welcomeMsg').value=res.welcome; if(res.goodbye) document.getElementById('goodbyeMsg').value=res.goodbye; document.getElementById('captchaEnabled').checked=res.captcha_enabled; } }
+        async function saveWelcome() { let w = document.getElementById('welcomeMsg').value; let res = await callAPI('/setwelcome','POST',{welcome:w}); if(res.success) showMessage('setMessage','✅ Приветствие сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
+        async function saveGoodbye() { let g = document.getElementById('goodbyeMsg').value; let res = await callAPI('/setgoodbye','POST',{goodbye:g}); if(res.success) showMessage('setMessage','✅ Прощание сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
+        async function toggleCaptcha() { let e = document.getElementById('captchaEnabled').checked; let res = await callAPI('/captcha','POST',{enabled:e}); if(!res.success){ document.getElementById('captchaEnabled').checked=!e; showMessage('setMessage','❌ Ошибка','error'); } else { showMessage('setMessage',`✅ Капча ${e?'включена':'выключена}`,'success'); } }
+        async function loadGroupInfo() { let res = await callAPI('/info'); if(res.error){ document.getElementById('groupInfo').innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } document.getElementById('groupInfo').innerHTML=`<div><strong>Название:</strong> ${res.title||'—'}</div><div><strong>ID:</strong> ${res.id}</div><div><strong>Участников:</strong> ${res.members_count||'—'}</div><div><strong>Верифицирована:</strong> ${res.verified_at?new Date(res.verified_at).toLocaleString():'—'}</div><div><strong>Капча:</strong> ${res.captcha_enabled?'✅ Вкл':'❌ Выкл'}</div>`; }
+        
+        async function loadPrefixes() { let c = document.getElementById('prefixesList'); c.innerHTML='<div class="loading">Загрузка...</div>'; let res = await callAPI('/prefixes'); if(res.error){ c.innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } if(res.prefixes?.length){ c.innerHTML=res.prefixes.map(p=>`<div class="user-item"><div><div class="user-name">${p.first_name}</div><div style="font-size:12px;">🏷️ [${p.prefix}]</div></div><div class="user-actions"><button class="danger" onclick="removePrefix('${p.user_id}')">❌</button></div></div>`).join(''); } else { c.innerHTML='<div class="loading">Нет префиксов</div>'; } }
+        async function givePrefix() { let u = document.getElementById('prefixUser').value, p = document.getElementById('prefixName').value; if(!u||!p){ showMessage('prefMessage','❌ Введите данные','error'); return; } let res = await callAPI('/giveprefix','POST',{username:u,prefix:p}); if(res.success){ showMessage('prefMessage',`✅ ${res.message}`,'success'); document.getElementById('prefixUser').value=''; document.getElementById('prefixName').value=''; loadPrefixes(); } else { showMessage('prefMessage',`❌ ${res.error}`,'error'); } }
+        async function removePrefix(uid) { let res = await callAPI('/removeprefix','POST',{user_id:uid}); if(res.success){ showMessage('prefMessage','✅ Префикс удалён','success'); loadPrefixes(); } else { showMessage('prefMessage','❌ Ошибка','error'); } }
+        
+        if(currentGroupId) { loadUsers(); } else { document.getElementById('usersList').innerHTML='<div class="loading">⚠️ Не указан ID группы</div>'; }
     </script>
 </body>
 </html>
