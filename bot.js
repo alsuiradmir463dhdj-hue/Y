@@ -1,218 +1,156 @@
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-const path = require('path');
-require('dotenv').config();
+// ========== API ДЛЯ ВЕРИФИКАЦИИ ГРУПП ==========
 
-const token = process.env.BOT_TOKEN;
-if (!token) {
-    console.error('❌ BOT_TOKEN не найден');
-    process.exit(1);
-}
+// Хранилище для кодов верификации
+const groupVerificationCodes = new Map(); // groupId -> { code, userId, date }
 
-const bot = new TelegramBot(token, { polling: true });
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Хранилище (замени на БД)
-const purchases = new Map(); // userId -> { prefix, date, status }
-const pendingInvoices = new Map(); // invoiceId -> { userId, prefix }
-
-// Middleware
-app.use(express.json());
-app.use(express.static('public'));
-
-// API: получить префиксы пользователя
-app.get('/api/my-prefixes', (req, res) => {
+app.get('/api/my-groups', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
-    if (!userId) return res.json({ prefixes: [] });
+    if (!userId) return res.json({ groups: [] });
     
-    const userPurchases = [];
-    for (const [uid, data] of purchases.entries()) {
-        if (uid === userId) {
-            userPurchases.push({ prefix: data.prefix, date: data.date });
+    const groups = [];
+    for (const [groupId, data] of verifiedGroups.entries()) {
+        if (data.addedBy === userId || data.verified) {
+            try {
+                const chat = await bot.getChat(groupId);
+                groups.push({ id: groupId, title: chat.title, verified: data.verified });
+            } catch (err) {}
         }
     }
-    res.json({ prefixes: userPurchases });
+    for (const [groupId, data] of pendingGroups.entries()) {
+        if (data.addedBy === userId) {
+            try {
+                const chat = await bot.getChat(groupId);
+                groups.push({ id: groupId, title: chat.title, verified: false });
+            } catch (err) {}
+        }
+    }
+    res.json({ groups });
 });
 
-// API: создать инвойс для оплаты звёздами
-app.post('/api/create-invoice', async (req, res) => {
-    const { prefix, userId, username, firstName } = req.body;
+app.post('/api/generate-code', async (req, res) => {
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    if (!userId) return res.json({ error: 'Не авторизован' });
     
-    if (!prefix || !userId) {
-        return res.json({ error: 'Не хватает данных' });
+    // Находим группу, куда недавно добавили бота
+    let targetGroup = null;
+    for (const [groupId, data] of pendingGroups.entries()) {
+        if (data.addedBy === userId) {
+            targetGroup = { id: groupId, data };
+            break;
+        }
     }
     
-    const invoiceId = Date.now().toString();
-    const price = 50; // 50 звёзд
+    if (!targetGroup) return res.json({ error: 'Нет групп для верификации. Добавьте бота в группу' });
     
-    pendingInvoices.set(invoiceId, {
-        userId,
-        prefix,
-        username,
-        firstName,
-        status: 'pending'
+    const code = generateSecretCode();
+    groupVerificationCodes.set(targetGroup.id, { code, userId, date: Date.now() });
+    
+    res.json({ code, groupId: targetGroup.id });
+});
+
+app.post('/api/verify-group', async (req, res) => {
+    const { groupId, code } = req.body;
+    const userId = parseInt(req.headers['x-telegram-user-id']);
+    
+    const pending = groupVerificationCodes.get(parseInt(groupId));
+    if (!pending) return res.json({ error: 'Код не найден или истёк' });
+    if (pending.code !== code) return res.json({ error: 'Неверный код' });
+    if (pending.userId !== userId) return res.json({ error: 'Не ваш код' });
+    
+    const groupData = pendingGroups.get(parseInt(groupId));
+    if (!groupData) return res.json({ error: 'Группа не найдена' });
+    
+    verifiedGroups.set(parseInt(groupId), {
+        verified: true,
+        secretCode: code,
+        addedBy: groupData.addedBy,
+        addedByUsername: groupData.addedByUsername,
+        verifiedAt: new Date().toISOString(),
+        settings: { captchaEnabled: true, respectEnabled: true, respects: new Map() }
     });
     
-    try {
-        // Создаём счёт через Telegram Bot API
-        const invoice = await bot.createInvoiceLink(
-            `Префикс [${prefix}]`,
-            `Купить префикс [${prefix}] для ${firstName || username || userId}`,
-            `prefix_${invoiceId}`,
-            '',
-            'XTR', // Telegram Stars
-            [{ label: `Префикс [${prefix}]`, amount: price }],
-            {
-                start_parameter: `prefix_${invoiceId}`,
-                provider_token: '', // для XTR не нужен
-                need_name: false,
-                need_phone_number: false,
-                need_email: false
-            }
-        );
-        
-        res.json({ invoiceLink: invoice });
-    } catch (err) {
-        console.error('Ошибка создания инвойса:', err);
-        res.json({ error: 'Не удалось создать счёт' });
-    }
+    pendingGroups.delete(parseInt(groupId));
+    groupVerificationCodes.delete(parseInt(groupId));
+    
+    await bot.sendMessage(parseInt(groupId), `✅ Группа верифицирована! Администратор ${groupData.addedByUsername} получил полный доступ.`);
+    
+    res.json({ success: true });
 });
 
-// Анимация печати
-const animations = new Map();
+// ========== API ДЛЯ РЕСПЕКТОВ ==========
 
-async function animateTyping(chatId, messageId, fullText, speed = 100) {
-    if (animations.has(chatId)) {
-        clearInterval(animations.get(chatId).interval);
-    }
-    
-    let currentText = '';
-    let index = 0;
-    
-    const interval = setInterval(async () => {
-        if (index >= fullText.length) {
-            clearInterval(interval);
-            animations.delete(chatId);
-            return;
-        }
-        
-        currentText += fullText[index];
-        index++;
-        
+app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
+    const group = verifiedGroups.get(req.groupId);
+    const respects = group?.settings?.respects || new Map();
+    const stats = [];
+    for (const [userId, count] of respects.entries()) {
         try {
-            await bot.editMessageText(currentText, {
-                chat_id: chatId,
-                message_id: messageId,
-                parse_mode: 'HTML'
-            });
+            const member = await bot.getChatMember(req.groupId, userId);
+            stats.push({ user_id: userId, first_name: member.user.first_name, username: member.user.username, respects: count });
         } catch (err) {}
-    }, speed);
-    
-    animations.set(chatId, { interval });
-}
-
-// Клавиатура с кнопкой приложения
-function getMainKeyboard() {
-    return {
-        reply_markup: {
-            keyboard: [
-                [{ text: '🚀 Купить префикс', web_app: { url: 'https://your-domain.com' } }],
-                [{ text: '📋 Помощь' }, { text: '💰 Мой префикс' }]
-            ],
-            resize_keyboard: true
-        }
-    };
-}
-
-// Команда /start
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '', getMainKeyboard());
-    const fullText = `👋 Привет, ${msg.from.first_name}!\n\nЯ бот с анимацией печати.\n\nМожешь купить себе префикс за 50 ⭐ Telegram Stars!\n\nНажми кнопку "Купить префикс" ниже.`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
+    }
+    stats.sort((a, b) => b.respects - a.respects);
+    res.json({ stats });
 });
 
-// Команда /help
-bot.onText(/\/help/, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '');
-    const fullText = `📋 Команды:\n\n/start - приветствие\n/help - помощь\n/my_prefix - посмотреть префикс\n/prefix - купить префикс\n\n⭐ Префикс = 50 Telegram Stars\nКупить можно через кнопку "Купить префикс"`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
-});
-
-// /my_prefix
-bot.onText(/\/my_prefix/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const purchase = purchases.get(userId);
-    
-    const sentMsg = await bot.sendMessage(chatId, '');
-    const fullText = purchase 
-        ? `🏷️ Твой префикс: [${purchase.prefix}]\nКуплен: ${new Date(purchase.date).toLocaleDateString()}`
-        : `❌ У тебя нет префикса\n\nКупить можно за 50 ⭐ через кнопку "Купить префикс"`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
-});
-
-// /prefix
-bot.onText(/\/prefix/, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '', getMainKeyboard());
-    const fullText = `🏷️ Купить префикс\n\n💰 Цена: 50 ⭐ Telegram Stars\n\nНапиши свой префикс или выбери готовый в приложении.\n\nНажми кнопку "Купить префикс" ниже.`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
-});
-
-// Обработка текста "хочу купить префикс"
-bot.onText(/хочу купить префикс/i, async (msg) => {
-    const chatId = msg.chat.id;
-    const sentMsg = await bot.sendMessage(chatId, '', getMainKeyboard());
-    const fullText = `🏷️ Префикс [Помощник]\n\n💰 Цена: 50 ⭐ Telegram Stars\n\nНажми кнопку "Купить префикс" ниже и выбери свой!`;
-    await animateTyping(chatId, sentMsg.message_id, fullText, 100);
-});
-
-// Обработка успешной оплаты через pre_checkout_query
-bot.on('pre_checkout_query', async (query) => {
-    const invoiceId = query.invoice_payload.replace('prefix_', '');
-    const pending = pendingInvoices.get(invoiceId);
-    
-    if (pending) {
-        await bot.answerPreCheckoutQuery(query.id, true);
+app.post('/api/admin/respect-toggle', adminGuard, async (req, res) => {
+    const { enabled } = req.body;
+    const group = verifiedGroups.get(req.groupId);
+    if (group) {
+        if (!group.settings) group.settings = {};
+        group.settings.respectEnabled = enabled;
+        verifiedGroups.set(req.groupId, group);
+        res.json({ success: true });
     } else {
-        await bot.answerPreCheckoutQuery(query.id, false, 'Ошибка');
+        res.json({ error: 'Группа не найдена' });
     }
 });
 
-// Обработка успешной оплаты
-bot.on('successful_payment', async (msg) => {
-    const userId = msg.from.id;
-    const invoiceId = msg.successful_payment.invoice_payload.replace('prefix_', '');
-    const pending = pendingInvoices.get(invoiceId);
+// Обработка респектов в чате
+bot.onText(/^\+респект @(\w+)$/i, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const fromId = msg.from.id;
+    const targetUsername = match[1];
     
-    if (pending) {
-        // Сохраняем покупку
-        purchases.set(userId, {
-            prefix: pending.prefix,
-            date: new Date().toISOString(),
-            username: pending.username,
-            firstName: pending.firstName
-        });
+    if (!isGroupVerified(chatId)) return;
+    const group = verifiedGroups.get(chatId);
+    if (!group?.settings?.respectEnabled) return;
+    if (fromId === targetId) return;
+    
+    try {
+        const members = await bot.getChatAdministrators(chatId);
+        const target = members.find(m => m.user.username === targetUsername);
+        if (!target) return;
         
-        pendingInvoices.delete(invoiceId);
+        const respects = group.settings.respects || new Map();
+        const current = respects.get(target.user.id) || 0;
+        respects.set(target.user.id, current + 1);
+        group.settings.respects = respects;
+        verifiedGroups.set(chatId, group);
         
-        // Уведомляем пользователя
-        await bot.sendMessage(userId, `✅ Поздравляю! Ты купил префикс [${pending.prefix}]\n\nТеперь он будет отображаться в группе!`);
-        
-        // Отправляем в группу (если нужно)
-        const groupId = process.env.GROUP_ID;
-        if (groupId) {
-            await bot.sendMessage(groupId, `🎉 Участник ${msg.from.first_name} купил префикс [${pending.prefix}]!`);
-        }
-    }
+        await bot.sendMessage(chatId, `⭐ ${msg.from.first_name} дал респект @${targetUsername}! Всего респектов: ${current + 1}`);
+    } catch (err) {}
 });
 
-// Запуск сервера для Web App
-app.listen(PORT, () => {
-    console.log(`🌐 Web App сервер запущен на порту ${PORT}`);
+// Ответ на сообщение с "+"
+bot.on('message', async (msg) => {
+    if (!msg.reply_to_message) return;
+    if (msg.text !== '+' && msg.text !== '+1') return;
+    
+    const chatId = msg.chat.id;
+    const fromId = msg.from.id;
+    const targetId = msg.reply_to_message.from.id;
+    
+    if (!isGroupVerified(chatId)) return;
+    const group = verifiedGroups.get(chatId);
+    if (!group?.settings?.respectEnabled) return;
+    if (fromId === targetId) return;
+    
+    const respects = group.settings.respects || new Map();
+    const current = respects.get(targetId) || 0;
+    respects.set(targetId, current + 1);
+    group.settings.respects = respects;
+    verifiedGroups.set(chatId, group);
+    
+    await bot.sendMessage(chatId, `⭐ ${msg.from.first_name} дал респект ${msg.reply_to_message.from.first_name}! Всего респектов: ${current + 1}`);
 });
-
-console.log('🤖 Бот запущен!');
