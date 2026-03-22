@@ -9,7 +9,7 @@ if (!token) {
 }
 
 const bot = new TelegramBot(token, { polling: true });
-const BOT_ID = token.split(':')[0]; // ID бота из токена
+const BOT_ID = token.split(':')[0];
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -319,7 +319,7 @@ app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
     res.json({ stats });
 });
 
-// ========== КОМАНДЫ БОТА ==========
+// ========== КОМАНДЫ БОТА (без Web App кнопки) ==========
 const APP_URL = 'https://alsuiradmir463dhdj-hue.github.io/Y';
 
 bot.onText(/\/start/, async (msg) => {
@@ -327,10 +327,7 @@ bot.onText(/\/start/, async (msg) => {
     const userId = msg.from.id;
     if (!userBalance.has(userId)) userBalance.set(userId, { stars: 5 });
     const balance = userBalance.get(userId);
-    await bot.sendMessage(chatId, `👋 Привет, ${msg.from.first_name}!\n\n⭐ Баланс: ${balance.stars} звёзд\n\nСпасибо, что используете меня!`);
-    await bot.sendMessage(chatId, '🚀 Открыть панель:', {
-        reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть', web_app: { url: `${APP_URL}?user_id=${userId}` } }]] }
-    });
+    await bot.sendMessage(chatId, `👋 Привет, ${msg.from.first_name}!\n\n⭐ Баланс: ${balance.stars} звёзд\n\nСпасибо, что используете меня!\n\n🔗 Мини-приложение: ${APP_URL}?user_id=${userId}`);
 });
 
 bot.onText(/\/help/, async (msg) => {
@@ -342,14 +339,14 @@ bot.onText(/\/help/, async (msg) => {
 
 ⭐ Звёзды:
 • Префикс — 50 ⭐
-• ULTRA подписка — 5 ⭐ (30 дней)`);
+• ULTRA подписка — 5 ⭐ (30 дней)
+
+🔗 Мини-приложение: ${APP_URL}?user_id=${msg.from.id}`);
 });
 
 bot.onText(/\/app/, async (msg) => {
     const userId = msg.from.id;
-    await bot.sendMessage(msg.chat.id, '🚀 Открываю...', {
-        reply_markup: { inline_keyboard: [[{ text: '🔧 Открыть', web_app: { url: `${APP_URL}?user_id=${userId}` } }]] }
-    });
+    await bot.sendMessage(msg.chat.id, `🚀 Открыть мини-приложение:\n\n${APP_URL}?user_id=${userId}`);
 });
 
 bot.onText(/\/addgroup/, async (msg) => {
