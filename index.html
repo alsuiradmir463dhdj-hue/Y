@@ -69,6 +69,7 @@
         }
         button.danger { background: #dc3545; }
         button.warning { background: #ffc107; color: #000; }
+        button.success { background: #28a745; }
         .price {
             font-size: 32px;
             font-weight: bold;
@@ -95,6 +96,7 @@
         }
         .status-badge.muted { background: #ff9800; }
         .status-badge.banned { background: #dc3545; color: #fff; }
+        .status-badge.admin { background: #28a745; color: #fff; }
         .message {
             margin-top: 12px;
             padding: 10px;
@@ -115,38 +117,86 @@
         .loading { text-align: center; padding: 20px; color: var(--tg-theme-hint-color, #999); }
         .btn-group { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
         .btn-group button { flex: 1; padding: 10px; }
+        .code-box {
+            background: var(--tg-theme-bg-color, #fff);
+            border: 2px solid var(--tg-theme-button-color, #2481cc);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .code-text {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            font-family: monospace;
+            margin-bottom: 12px;
+        }
+        .verify-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .verify-buttons button {
+            flex: 1;
+            margin: 0;
+        }
+        .group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #eee);
+        }
+        .group-name { font-weight: 500; }
+        .group-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+        .group-status.verified { background: #28a745; color: #fff; }
+        .group-status.pending { background: #ffc107; color: #000; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⭐ Bot Panel</h1>
+        <h1>🛡️ Bot Control Panel</h1>
         
         <div class="tab-bar">
-            <button class="tab active" onclick="switchTab('buy')">💎 Купить</button>
+            <button class="tab active" onclick="switchTab('groups')">📁 Группы</button>
+            <button class="tab" onclick="switchTab('verify')">🔐 Верификация</button>
             <button class="tab" onclick="switchTab('users')">👥 Пользователи</button>
             <button class="tab" onclick="switchTab('moderation')">🔨 Модерация</button>
             <button class="tab" onclick="switchTab('settings')">⚙️ Настройки</button>
             <button class="tab" onclick="switchTab('prefixes')">🏷️ Префиксы</button>
+            <button class="tab" onclick="switchTab('respect')">⭐ Респекты</button>
         </div>
         
-        <!-- Вкладка: Покупка префикса -->
-        <div id="tab-buy" class="tab-content active">
+        <!-- Вкладка: Группы -->
+        <div id="tab-groups" class="tab-content active">
             <div class="card">
-                <p style="text-align: center; margin-bottom: 8px;">Выбери или напиши свой префикс</p>
-                <div class="btn-group">
-                    <button onclick="selectPrefix('Помощник')">Помощник</button>
-                    <button onclick="selectPrefix('Воин')">Воин</button>
-                    <button onclick="selectPrefix('Маг')">Маг</button>
+                <h2>📋 Мои группы</h2>
+                <div id="groupsList"><div class="loading">Загрузка...</div></div>
+                <button onclick="refreshGroups()" style="margin-top: 12px;">🔄 Обновить</button>
+            </div>
+        </div>
+        
+        <!-- Вкладка: Верификация -->
+        <div id="tab-verify" class="tab-content">
+            <div class="card">
+                <h2>🔐 Верификация группы</h2>
+                <p style="margin-bottom: 16px;">Добавьте бота в группу, затем нажмите "Сгенерировать код"</p>
+                <div id="verifyCodeBox" style="display: none;" class="code-box">
+                    <div class="code-text" id="verifyCodeText">XXXXXX</div>
+                    <button onclick="copyCode()">📋 Скопировать код</button>
+                    <div class="verify-buttons">
+                        <button class="success" onclick="confirmGroup()">✅ Подтвердить</button>
+                        <button class="danger" onclick="cancelGroup()">❌ Отменить</button>
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button onclick="selectPrefix('VIP')">VIP</button>
-                    <button onclick="selectPrefix('Легенда')">Легенда</button>
-                    <button onclick="selectPrefix('Мастер')">Мастер</button>
-                </div>
-                <input type="text" id="customPrefix" placeholder="Или напиши свой префикс" maxlength="20">
-                <div class="price">50 ⭐ <small>Telegram Stars</small></div>
-                <button id="buyBtn" onclick="buyPrefix()">💎 Купить префикс</button>
-                <div id="buyMessage" class="message"></div>
+                <button id="genCodeBtn" onclick="generateCode()">🎲 Сгенерировать код</button>
+                <div id="verifyMessage" class="message"></div>
+                <div class="info-text" style="margin-top: 16px;">Код нужно отправить в группу, где находится бот. После подтверждения вы получите полный доступ к управлению.</div>
             </div>
         </div>
         
@@ -154,7 +204,7 @@
         <div id="tab-users" class="tab-content">
             <div class="card">
                 <input type="text" id="searchUser" placeholder="Поиск по имени" onkeyup="searchUsers()">
-                <div id="usersList"><div class="loading">Загрузка...</div></div>
+                <div id="usersList"><div class="loading">Выберите группу</div></div>
             </div>
         </div>
         
@@ -201,10 +251,10 @@
             </div>
             <div class="card">
                 <h2>🔒 Капча</h2>
-                <div class="switch"><label>Включить капчу</label><input type="checkbox" id="captchaEnabled" onchange="toggleCaptcha()"></div>
+                <div class="switch"><label>Включить капчу для новых участников</label><input type="checkbox" id="captchaEnabled" onchange="toggleCaptcha()"></div>
             </div>
             <div class="card">
-                <h2>📊 Информация</h2>
+                <h2>📊 Информация о группе</h2>
                 <button onclick="loadGroupInfo()">🔄 Обновить</button>
                 <div id="groupInfo" style="margin-top:12px; font-size:14px;"></div>
             </div>
@@ -214,16 +264,28 @@
         <!-- Вкладка: Префиксы -->
         <div id="tab-prefixes" class="tab-content">
             <div class="card">
-                <h2>🏷️ Выдать префикс</h2>
+                <h2>🏷️ Выдать префикс (возле имени)</h2>
                 <input type="text" id="prefixUser" placeholder="@username">
-                <input type="text" id="prefixName" placeholder="Префикс">
-                <button onclick="givePrefix()">🎁 Выдать</button>
+                <input type="text" id="prefixName" placeholder="Префикс (например, Админ, Модератор)">
+                <button onclick="givePrefix()">🎁 Выдать префикс</button>
+                <div class="info-text">Префикс появится перед именем пользователя в группе</div>
             </div>
             <div class="card">
                 <h2>📋 Список префиксов</h2>
                 <div id="prefixesList"><div class="loading">Загрузка...</div></div>
             </div>
             <div id="prefMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Респекты -->
+        <div id="tab-respect" class="tab-content">
+            <div class="card">
+                <h2>⭐ Система респектов</h2>
+                <p style="margin-bottom: 16px;">Напишите в чате: <code>+респект @username</code> или ответьте на сообщение с <code>+</code></p>
+                <div class="switch"><label>Включить систему респектов</label><input type="checkbox" id="respectEnabled" onchange="toggleRespect()"></div>
+                <div id="respectStats"><div class="loading">Загрузка...</div></div>
+            </div>
+            <div id="respectMessage" class="message"></div>
         </div>
     </div>
     
@@ -234,7 +296,8 @@
         
         let currentGroupId = null;
         let currentUserId = tg.initDataUnsafe?.user?.id || null;
-        let selectedPrefix = '';
+        let pendingGroupId = null;
+        let pendingCode = null;
         
         const urlParams = new URLSearchParams(window.location.search);
         currentGroupId = urlParams.get('group_id');
@@ -256,6 +319,8 @@
             if (tab === 'users') loadUsers();
             if (tab === 'prefixes') loadPrefixes();
             if (tab === 'settings') loadSettings();
+            if (tab === 'groups') refreshGroups();
+            if (tab === 'respect') loadRespectStats();
         }
         
         async function callAPI(endpoint, method = 'GET', data = null) {
@@ -264,35 +329,109 @@
                 if (data) options.body = JSON.stringify(data);
                 let res = await fetch(`/api/admin${endpoint}`, options);
                 return await res.json();
-            } catch(e) { return { error: 'Ошибка' }; }
+            } catch(e) { return { error: 'Ошибка соединения' }; }
         }
         
-        function selectPrefix(p) { selectedPrefix = p; document.getElementById('customPrefix').value = p; }
-        
-        async function buyPrefix() {
-            let prefix = document.getElementById('customPrefix').value.trim();
-            if (!prefix) { showMessage('buyMessage', '❌ Введи префикс', 'error'); return; }
-            let btn = document.getElementById('buyBtn');
-            btn.disabled = true; btn.textContent = '⏳...';
-            let res = await fetch('/api/create-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, userId: currentUserId, firstName: tg.initDataUnsafe?.user?.first_name }) });
+        // ========== ГРУППЫ ==========
+        async function refreshGroups() {
+            let container = document.getElementById('groupsList');
+            container.innerHTML = '<div class="loading">Загрузка...</div>';
+            let res = await fetch('/api/my-groups', { headers: { 'X-Telegram-User-Id': currentUserId } });
             let data = await res.json();
-            if (data.invoiceLink) { tg.openTelegramLink(data.invoiceLink); showMessage('buyMessage', '✅ Переход к оплате', 'success'); }
-            else { showMessage('buyMessage', '❌ Ошибка', 'error'); }
-            btn.disabled = false; btn.textContent = '💎 Купить префикс';
+            if (data.groups?.length) {
+                container.innerHTML = data.groups.map(g => `
+                    <div class="group-item" onclick="selectGroup(${g.id}, '${g.title}')" style="cursor:pointer;">
+                        <div><div class="group-name">${g.title}</div><div style="font-size:12px;">ID: ${g.id}</div></div>
+                        <div><span class="group-status ${g.verified ? 'verified' : 'pending'}">${g.verified ? '✅ Верифицирована' : '⏳ Ожидает'}</span></div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="loading">Нет групп. Добавьте бота в группу и сгенерируйте код</div>';
+            }
         }
         
+        function selectGroup(groupId, title) {
+            currentGroupId = groupId;
+            document.getElementById('groupInfo').innerHTML = `<div class="loading">Группа выбрана: ${title}</div>`;
+            showMessage('verifyMessage', `✅ Выбрана группа: ${title}`, 'success');
+            loadUsers();
+            loadSettings();
+            loadPrefixes();
+        }
+        
+        // ========== ВЕРИФИКАЦИЯ ==========
+        async function generateCode() {
+            let res = await fetch('/api/generate-code', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Telegram-User-Id': currentUserId }, body: JSON.stringify({}) });
+            let data = await res.json();
+            if (data.code) {
+                pendingGroupId = data.groupId;
+                pendingCode = data.code;
+                document.getElementById('verifyCodeBox').style.display = 'block';
+                document.getElementById('verifyCodeText').textContent = data.code;
+                showMessage('verifyMessage', '✅ Код сгенерирован! Отправьте его в группу', 'success');
+            } else {
+                showMessage('verifyMessage', '❌ ' + (data.error || 'Ошибка'), 'error');
+            }
+        }
+        
+        function copyCode() {
+            let code = document.getElementById('verifyCodeText').textContent;
+            navigator.clipboard.writeText(code);
+            showMessage('verifyMessage', '📋 Код скопирован! Отправьте его в группу', 'success');
+        }
+        
+        async function confirmGroup() {
+            if (!pendingGroupId || !pendingCode) {
+                showMessage('verifyMessage', '❌ Сначала сгенерируйте код', 'error');
+                return;
+            }
+            let res = await fetch('/api/verify-group', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Telegram-User-Id': currentUserId }, body: JSON.stringify({ groupId: pendingGroupId, code: pendingCode }) });
+            let data = await res.json();
+            if (data.success) {
+                showMessage('verifyMessage', '✅ Группа подтверждена! Полный доступ получен', 'success');
+                document.getElementById('verifyCodeBox').style.display = 'none';
+                refreshGroups();
+            } else {
+                showMessage('verifyMessage', '❌ ' + (data.error || 'Ошибка'), 'error');
+            }
+        }
+        
+        async function cancelGroup() {
+            document.getElementById('verifyCodeBox').style.display = 'none';
+            pendingGroupId = null;
+            pendingCode = null;
+            showMessage('verifyMessage', '❌ Верификация отменена', 'error');
+        }
+        
+        // ========== ПОЛЬЗОВАТЕЛИ ==========
         async function loadUsers() {
+            if (!currentGroupId) { document.getElementById('usersList').innerHTML = '<div class="loading">Выберите группу</div>'; return; }
             let container = document.getElementById('usersList');
             container.innerHTML = '<div class="loading">Загрузка...</div>';
             let res = await callAPI('/users');
             if (res.error) { container.innerHTML = `<div class="loading">❌ ${res.error}</div>`; return; }
             if (res.users?.length) {
-                container.innerHTML = res.users.map(u => `<div class="user-item"><div><div class="user-name">${u.first_name}</div><div style="font-size:12px;">@${u.username || 'нет'}</div>${u.is_muted ? '<span class="status-badge muted">🔇 Мут</span>' : ''}${u.is_banned ? '<span class="status-badge banned">🔨 Бан</span>' : ''}</div><div class="user-actions"><button onclick="quickMute(\'${u.username}\')">🔇</button><button class="danger" onclick="quickBan(\'${u.username}\')">🔨</button></div></div>`).join('');
+                container.innerHTML = res.users.map(u => `
+                    <div class="user-item">
+                        <div>
+                            <div class="user-name">${u.first_name}</div>
+                            <div style="font-size:12px;">@${u.username || 'нет'}</div>
+                            ${u.is_muted ? '<span class="status-badge muted">🔇 Мут</span>' : ''}
+                            ${u.is_banned ? '<span class="status-badge banned">🔨 Бан</span>' : ''}
+                            ${u.is_admin ? '<span class="status-badge admin">👑 Админ</span>' : ''}
+                        </div>
+                        <div class="user-actions">
+                            <button onclick="quickMute('${u.username}')">🔇</button>
+                            <button class="danger" onclick="quickBan('${u.username}')">🔨</button>
+                        </div>
+                    </div>
+                `).join('');
             } else { container.innerHTML = '<div class="loading">Нет пользователей</div>'; }
         }
         
         function searchUsers() { let s = document.getElementById('searchUser').value.toLowerCase(); document.querySelectorAll('.user-item').forEach(i => { i.style.display = i.innerText.toLowerCase().includes(s) ? 'flex' : 'none'; }); }
         
+        // ========== МОДЕРАЦИЯ ==========
         async function muteUser() { let u = document.getElementById('muteUsername').value, t = document.getElementById('muteTime').value, r = document.getElementById('muteReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/mute','POST',{username:u,time:t,reason:r}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('muteUsername').value=''; document.getElementById('muteReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
         async function unmuteUser() { let u = document.getElementById('unmuteUsername').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/unmute','POST',{username:u}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('unmuteUsername').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
         async function banUser() { let u = document.getElementById('banUsername').value, r = document.getElementById('banReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAPI('/ban','POST',{username:u,reason:r}); if(res.success){ showMessage('modMessage',`✅ ${res.message}`,'success'); document.getElementById('banUsername').value=''; document.getElementById('banReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
@@ -300,17 +439,23 @@
         async function quickMute(u) { document.getElementById('muteUsername').value=u; document.getElementById('muteTime').value='1h'; document.getElementById('muteReason').value='Модерация'; await muteUser(); }
         async function quickBan(u) { document.getElementById('banUsername').value=u; document.getElementById('banReason').value='Нарушение'; await banUser(); }
         
-        async function loadSettings() { let res = await callAPI('/settings'); if(!res.error){ if(res.welcome) document.getElementById('welcomeMsg').value=res.welcome; if(res.goodbye) document.getElementById('goodbyeMsg').value=res.goodbye; document.getElementById('captchaEnabled').checked=res.captcha_enabled; } }
+        // ========== НАСТРОЙКИ ==========
+        async function loadSettings() { if(!currentGroupId) return; let res = await callAPI('/settings'); if(!res.error){ if(res.welcome) document.getElementById('welcomeMsg').value=res.welcome; if(res.goodbye) document.getElementById('goodbyeMsg').value=res.goodbye; document.getElementById('captchaEnabled').checked=res.captcha_enabled; } }
         async function saveWelcome() { let w = document.getElementById('welcomeMsg').value; let res = await callAPI('/setwelcome','POST',{welcome:w}); if(res.success) showMessage('setMessage','✅ Приветствие сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
         async function saveGoodbye() { let g = document.getElementById('goodbyeMsg').value; let res = await callAPI('/setgoodbye','POST',{goodbye:g}); if(res.success) showMessage('setMessage','✅ Прощание сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
-        async function toggleCaptcha() { let e = document.getElementById('captchaEnabled').checked; let res = await callAPI('/captcha','POST',{enabled:e}); if(!res.success){ document.getElementById('captchaEnabled').checked=!e; showMessage('setMessage','❌ Ошибка','error'); } else { showMessage('setMessage',`✅ Капча ${e?'включена':'выключена}`,'success'); } }
-        async function loadGroupInfo() { let res = await callAPI('/info'); if(res.error){ document.getElementById('groupInfo').innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } document.getElementById('groupInfo').innerHTML=`<div><strong>Название:</strong> ${res.title||'—'}</div><div><strong>ID:</strong> ${res.id}</div><div><strong>Участников:</strong> ${res.members_count||'—'}</div><div><strong>Верифицирована:</strong> ${res.verified_at?new Date(res.verified_at).toLocaleString():'—'}</div><div><strong>Капча:</strong> ${res.captcha_enabled?'✅ Вкл':'❌ Выкл'}</div>`; }
+        async function toggleCaptcha() { let e = document.getElementById('captchaEnabled').checked; let res = await callAPI('/captcha','POST',{enabled:e}); if(!res.success){ document.getElementById('captchaEnabled').checked=!e; showMessage('setMessage','❌ Ошибка','error'); } else { showMessage('setMessage',`✅ Капча ${e?'включена':'выключена'}`, 'success'); } }
+        async function loadGroupInfo() { if(!currentGroupId) return; let res = await callAPI('/info'); if(res.error){ document.getElementById('groupInfo').innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } document.getElementById('groupInfo').innerHTML=`<div><strong>Название:</strong> ${res.title||'—'}</div><div><strong>ID:</strong> ${res.id}</div><div><strong>Участников:</strong> ${res.members_count||'—'}</div><div><strong>Капча:</strong> ${res.captcha_enabled?'✅ Вкл':'❌ Выкл'}</div>`; }
         
-        async function loadPrefixes() { let c = document.getElementById('prefixesList'); c.innerHTML='<div class="loading">Загрузка...</div>'; let res = await callAPI('/prefixes'); if(res.error){ c.innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } if(res.prefixes?.length){ c.innerHTML=res.prefixes.map(p=>`<div class="user-item"><div><div class="user-name">${p.first_name}</div><div style="font-size:12px;">🏷️ [${p.prefix}]</div></div><div class="user-actions"><button class="danger" onclick="removePrefix('${p.user_id}')">❌</button></div></div>`).join(''); } else { c.innerHTML='<div class="loading">Нет префиксов</div>'; } }
+        // ========== ПРЕФИКСЫ ==========
+        async function loadPrefixes() { if(!currentGroupId) return; let c = document.getElementById('prefixesList'); c.innerHTML='<div class="loading">Загрузка...</div>'; let res = await callAPI('/prefixes'); if(res.error){ c.innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } if(res.prefixes?.length){ c.innerHTML=res.prefixes.map(p=>`<div class="user-item"><div><div class="user-name">${p.first_name}</div><div style="font-size:12px;">🏷️ [${p.prefix}]</div></div><div class="user-actions"><button class="danger" onclick="removePrefix('${p.user_id}')">❌</button></div></div>`).join(''); } else { c.innerHTML='<div class="loading">Нет префиксов</div>'; } }
         async function givePrefix() { let u = document.getElementById('prefixUser').value, p = document.getElementById('prefixName').value; if(!u||!p){ showMessage('prefMessage','❌ Введите данные','error'); return; } let res = await callAPI('/giveprefix','POST',{username:u,prefix:p}); if(res.success){ showMessage('prefMessage',`✅ ${res.message}`,'success'); document.getElementById('prefixUser').value=''; document.getElementById('prefixName').value=''; loadPrefixes(); } else { showMessage('prefMessage',`❌ ${res.error}`,'error'); } }
         async function removePrefix(uid) { let res = await callAPI('/removeprefix','POST',{user_id:uid}); if(res.success){ showMessage('prefMessage','✅ Префикс удалён','success'); loadPrefixes(); } else { showMessage('prefMessage','❌ Ошибка','error'); } }
         
-        if(currentGroupId) { loadUsers(); } else { document.getElementById('usersList').innerHTML='<div class="loading">⚠️ Не указан ID группы</div>'; }
+        // ========== РЕСПЕКТЫ ==========
+        async function loadRespectStats() { if(!currentGroupId) { document.getElementById('respectStats').innerHTML='<div class="loading">Выберите группу</div>'; return; } let res = await callAPI('/respect-stats'); if(res.error){ document.getElementById('respectStats').innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } if(res.stats?.length){ document.getElementById('respectStats').innerHTML=res.stats.map(s=>`<div class="user-item"><div><div class="user-name">${s.first_name}</div><div style="font-size:12px;">@${s.username||'нет'}</div></div><div><span style="font-size:20px; font-weight:bold;">⭐ ${s.respects}</span></div></div>`).join(''); } else { document.getElementById('respectStats').innerHTML='<div class="loading">Нет данных о респектах</div>'; } }
+        async function toggleRespect() { let e = document.getElementById('respectEnabled').checked; let res = await callAPI('/respect-toggle','POST',{enabled:e}); if(!res.success){ document.getElementById('respectEnabled').checked=!e; showMessage('respectMessage','❌ Ошибка','error'); } else { showMessage('respectMessage',`✅ Система респектов ${e?'включена':'выключена'}`, 'success'); } }
+        
+        refreshGroups();
     </script>
 </body>
 </html>
