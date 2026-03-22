@@ -9,17 +9,19 @@ if (!token) {
 }
 
 const bot = new TelegramBot(token, { polling: true });
+const BOT_ID = token.split(':')[0]; // ID бота из токена
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== ХРАНИЛИЩА ==========
-const userBalance = new Map();        // userId -> { stars, ultraUntil }
-const purchases = new Map();           // userId -> { prefix, date }
-const pendingInvoices = new Map();     // invoiceId -> { userId, prefix, type, amount }
-const verifiedGroups = new Map();      // groupId -> { verified, settings, respects, addedBy }
-const pendingGroups = new Map();       // groupId -> { secretCode, addedBy }
-const groupVerificationCodes = new Map(); // groupId -> { code, userId }
-const captchaPending = new Map();      // groupId_userId -> { code }
+const userBalance = new Map();
+const purchases = new Map();
+const pendingInvoices = new Map();
+const verifiedGroups = new Map();
+const pendingGroups = new Map();
+const groupVerificationCodes = new Map();
+const captchaPending = new Map();
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
 function generateSecretCode() {
@@ -36,11 +38,6 @@ function generateCaptcha() {
 
 function isGroupVerified(chatId) {
     return verifiedGroups.get(chatId)?.verified === true;
-}
-
-function hasUltraSubscription(userId) {
-    const user = userBalance.get(userId);
-    return user?.ultraUntil && user.ultraUntil > Date.now();
 }
 
 async function isAdminInGroup(chatId, userId) {
@@ -113,78 +110,19 @@ async function unbanUserReal(chatId, userId) {
 app.use(express.json());
 app.use(express.static('public'));
 
-// Баланс
 app.get('/api/balance', (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
     const user = userBalance.get(userId) || { stars: 5 };
-    res.json({ stars: user.stars, hasUltra: hasUltraSubscription(userId) });
+    res.json({ stars: user.stars });
 });
 
-// Пополнение баланса (реальная оплата)
-app.post('/api/topup', async (req, res) => {
-    const { amount } = req.body;
-    const userId = parseInt(req.headers['x-telegram-user-id']);
-    if (!userId) return res.json({ error: 'Не авторизован' });
-    
-    const invoiceId = Date.now().toString();
-    pendingInvoices.set(invoiceId, { userId, type: 'topup', amount });
-    
-    try {
-        const invoice = await bot.createInvoiceLink(
-            `Пополнение на ${amount} ⭐`,
-            `Пополнение баланса на ${amount} звёзд`,
-            `topup_${invoiceId}`,
-            '',
-            'XTR',
-            [{ label: `${amount} Telegram Stars`, amount: amount }]
-        );
-        res.json({ invoiceLink: invoice });
-    } catch (err) {
-        res.json({ error: 'Ошибка создания счёта' });
-    }
-});
-
-// Покупка префикса
-app.post('/api/buy-prefix', async (req, res) => {
-    const { prefix } = req.body;
-    const userId = parseInt(req.headers['x-telegram-user-id']);
-    if (!userId) return res.json({ error: 'Не авторизован' });
-    if (!prefix) return res.json({ error: 'Не указан префикс' });
-    if (prefix.toLowerCase() === 'админ') return res.json({ error: 'Префикс "Админ" недоступен' });
-    
-    const user = userBalance.get(userId) || { stars: 5 };
-    if (user.stars < 50) return res.json({ error: `Недостаточно звёзд. Нужно 50 ⭐. У вас ${user.stars} ⭐` });
-    
-    user.stars -= 50;
-    userBalance.set(userId, user);
-    purchases.set(userId, { prefix, date: new Date().toISOString() });
-    
-    res.json({ success: true, stars: user.stars, prefix });
-});
-
-// Покупка ULTRA подписки
-app.post('/api/buy-ultra', async (req, res) => {
-    const userId = parseInt(req.headers['x-telegram-user-id']);
-    if (!userId) return res.json({ error: 'Не авторизован' });
-    
-    const user = userBalance.get(userId) || { stars: 5 };
-    if (user.stars < 5) return res.json({ error: `Недостаточно звёзд. Нужно 5 ⭐. У вас ${user.stars} ⭐` });
-    
-    user.stars -= 5;
-    user.ultraUntil = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    userBalance.set(userId, user);
-    
-    res.json({ success: true, stars: user.stars, ultraUntil: user.ultraUntil });
-});
-
-// Мои группы
 app.get('/api/my-groups', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ groups: [] });
     const groups = [];
     for (const [groupId, data] of verifiedGroups.entries()) {
-        if (data.addedBy === userId || data.verified) {
+        if (data.addedBy === userId) {
             try {
                 const chat = await bot.getChat(groupId);
                 groups.push({ id: groupId, title: chat.title, verified: true });
@@ -202,7 +140,6 @@ app.get('/api/my-groups', async (req, res) => {
     res.json({ groups });
 });
 
-// Генерация кода
 app.post('/api/generate-code', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
@@ -216,7 +153,6 @@ app.post('/api/generate-code', async (req, res) => {
     res.json({ code, groupId: targetGroup.id });
 });
 
-// Подтверждение группы
 app.post('/api/verify-group', async (req, res) => {
     const { groupId, code } = req.body;
     const userId = parseInt(req.headers['x-telegram-user-id']);
@@ -240,7 +176,6 @@ app.post('/api/verify-group', async (req, res) => {
     res.json({ success: true });
 });
 
-// Настройки группы
 app.get('/api/admin/settings', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     res.json({ 
@@ -279,7 +214,6 @@ app.post('/api/admin/respect-toggle', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
-// Список пользователей
 app.get('/api/admin/users', adminGuard, async (req, res) => {
     try {
         const members = await bot.getChatAdministrators(req.groupId);
@@ -292,7 +226,6 @@ app.get('/api/admin/users', adminGuard, async (req, res) => {
     } catch (err) { res.json({ error: 'Ошибка' }); }
 });
 
-// Мут/бан API
 app.post('/api/admin/mute', adminGuard, async (req, res) => {
     const { username, time, reason } = req.body;
     try {
@@ -345,7 +278,6 @@ app.post('/api/admin/unban', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
-// Префиксы
 app.get('/api/admin/prefixes', adminGuard, async (req, res) => {
     const prefixes = [];
     for (const [userId, data] of purchases.entries()) {
@@ -373,7 +305,6 @@ app.post('/api/admin/removeprefix', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
-// Респекты
 app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     const respects = group?.respects || new Map();
@@ -389,7 +320,6 @@ app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
 });
 
 // ========== КОМАНДЫ БОТА ==========
-
 const APP_URL = 'https://alsuiradmir463dhdj-hue.github.io/Y';
 
 bot.onText(/\/start/, async (msg) => {
@@ -429,11 +359,10 @@ bot.onText(/\/addgroup/, async (msg) => {
 
 // ========== ОБРАБОТЧИКИ ГРУПП ==========
 
-// Добавление в группу
 bot.on('new_chat_members', async (msg) => {
     const chatId = msg.chat.id;
     for (const member of msg.new_chat_members) {
-        if (member.id === bot.options.token.split(':')[0]) {
+        if (member.id === parseInt(BOT_ID)) {
             if (isGroupVerified(chatId)) {
                 await bot.sendMessage(chatId, '✅ Группа уже верифицирована');
                 return;
@@ -444,8 +373,7 @@ bot.on('new_chat_members', async (msg) => {
             await bot.sendMessage(msg.from.id, `🔐 Код: ${secretCode}`);
         }
         
-        // Автоприветствие
-        if (member.id !== bot.options.token.split(':')[0] && isGroupVerified(chatId)) {
+        if (member.id !== parseInt(BOT_ID) && isGroupVerified(chatId)) {
             const group = verifiedGroups.get(chatId);
             const settings = group?.settings || {};
             
@@ -468,7 +396,6 @@ bot.on('new_chat_members', async (msg) => {
     }
 });
 
-// Проверка кода верификации и капчи
 bot.onText(/^(.+)$/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -504,11 +431,10 @@ bot.onText(/^(.+)$/, async (msg, match) => {
     }
 });
 
-// Прощание
 bot.on('left_chat_member', async (msg) => {
     const chatId = msg.chat.id;
     const leftMember = msg.left_chat_member;
-    if (leftMember.id === bot.options.token.split(':')[0]) {
+    if (leftMember.id === parseInt(BOT_ID)) {
         verifiedGroups.delete(chatId);
         pendingGroups.delete(chatId);
         return;
@@ -519,7 +445,7 @@ bot.on('left_chat_member', async (msg) => {
     }
 });
 
-// Система респектов
+// Респекты
 bot.onText(/^\+респект @(\w+)$/i, async (msg, match) => {
     const chatId = msg.chat.id;
     const fromId = msg.from.id;
@@ -569,39 +495,11 @@ bot.on('message', async (msg) => {
 
 // Обработка оплаты
 bot.on('pre_checkout_query', async (query) => {
-    const payload = query.invoice_payload;
-    const invoiceId = payload.replace('topup_', '').replace('prefix_', '');
-    const pending = pendingInvoices.get(invoiceId);
-    if (pending) await bot.answerPreCheckoutQuery(query.id, true);
-    else await bot.answerPreCheckoutQuery(query.id, false, 'Ошибка');
+    await bot.answerPreCheckoutQuery(query.id, true);
 });
 
 bot.on('successful_payment', async (msg) => {
-    const userId = msg.from.id;
-    const payload = msg.successful_payment.invoice_payload;
-    
-    if (payload.startsWith('topup_')) {
-        const invoiceId = payload.replace('topup_', '');
-        const pending = pendingInvoices.get(invoiceId);
-        if (pending?.type === 'topup') {
-            const user = userBalance.get(userId) || { stars: 0 };
-            user.stars += pending.amount;
-            userBalance.set(userId, user);
-            pendingInvoices.delete(invoiceId);
-            await bot.sendMessage(userId, `✅ Баланс пополнен на ${pending.amount} ⭐! Теперь у вас ${user.stars} ⭐`);
-        }
-    } else if (payload.startsWith('prefix_')) {
-        const invoiceId = payload.replace('prefix_', '');
-        const pending = pendingInvoices.get(invoiceId);
-        if (pending?.type === 'prefix') {
-            const user = userBalance.get(userId) || { stars: 0 };
-            user.stars -= pending.amount;
-            userBalance.set(userId, user);
-            purchases.set(userId, { prefix: pending.prefix, date: new Date().toISOString() });
-            pendingInvoices.delete(invoiceId);
-            await bot.sendMessage(userId, `✅ Вы купили префикс [${pending.prefix}]!`);
-        }
-    }
+    await bot.sendMessage(msg.chat.id, `✅ Оплата прошла успешно!`);
 });
 
 // ========== ЗАПУСК ==========
