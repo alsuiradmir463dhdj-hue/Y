@@ -1,0 +1,13 @@
+{
+  "name": "telegram-animation-bot",
+  "version": "1.0.0",
+  "description": "Бот с анимацией печати по буквам",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "dotenv": "^16.3.1"
+  }
+}
