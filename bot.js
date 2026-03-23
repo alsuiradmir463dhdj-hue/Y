@@ -8,7 +8,6 @@ if (!token) {
     process.exit(1);
 }
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
 const bot = new TelegramBot(token, { polling: true });
 const BOT_ID = token.split(':')[0];
 
@@ -16,13 +15,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== ХРАНИЛИЩА ==========
-const userBalance = new Map();
-const purchases = new Map();
-const pendingInvoices = new Map();
-const verifiedGroups = new Map();
-const pendingGroups = new Map();
-const groupVerificationCodes = new Map();
-const captchaPending = new Map();
+const userBalance = new Map();        // userId -> { stars, ultraUntil }
+const purchases = new Map();           // userId -> { prefix, date }
+const pendingInvoices = new Map();     // invoiceId -> { userId, prefix, type }
+const verifiedGroups = new Map();      // groupId -> { verified, settings, respects, addedBy }
+const pendingGroups = new Map();       // groupId -> { secretCode, addedBy }
+const groupVerificationCodes = new Map(); // groupId -> { code, userId }
+const captchaPending = new Map();      // groupId_userId -> { code, date }
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
 function generateSecretCode() {
@@ -113,6 +112,7 @@ async function unbanUserReal(chatId, userId) {
 app.use(express.json());
 app.use(express.static('public'));
 
+// Баланс
 app.get('/api/balance', (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
@@ -120,10 +120,13 @@ app.get('/api/balance', (req, res) => {
     res.json({ stars: user.stars });
 });
 
+// Мои группы
 app.get('/api/my-groups', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ groups: [] });
+    
     const groups = [];
+    
     for (const [groupId, data] of verifiedGroups.entries()) {
         if (data.addedBy === userId) {
             try {
@@ -132,6 +135,7 @@ app.get('/api/my-groups', async (req, res) => {
             } catch (err) {}
         }
     }
+    
     for (const [groupId, data] of pendingGroups.entries()) {
         if (data.addedBy === userId) {
             try {
@@ -140,31 +144,43 @@ app.get('/api/my-groups', async (req, res) => {
             } catch (err) {}
         }
     }
+    
     res.json({ groups });
 });
 
+// Генерация кода для верификации
 app.post('/api/generate-code', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
+    
     let targetGroup = null;
     for (const [groupId, data] of pendingGroups.entries()) {
-        if (data.addedBy === userId) { targetGroup = { id: groupId, data }; break; }
+        if (data.addedBy === userId) {
+            targetGroup = { id: groupId, data };
+            break;
+        }
     }
-    if (!targetGroup) return res.json({ error: 'Нет групп. Добавьте бота в группу' });
+    
+    if (!targetGroup) return res.json({ error: 'Нет групп для верификации. Добавьте бота в группу' });
+    
     const code = generateSecretCode();
     groupVerificationCodes.set(targetGroup.id, { code, userId, date: Date.now() });
     res.json({ code, groupId: targetGroup.id });
 });
 
+// Подтверждение группы
 app.post('/api/verify-group', async (req, res) => {
     const { groupId, code } = req.body;
     const userId = parseInt(req.headers['x-telegram-user-id']);
+    
     const pending = groupVerificationCodes.get(parseInt(groupId));
-    if (!pending) return res.json({ error: 'Код не найден' });
+    if (!pending) return res.json({ error: 'Код не найден или истёк' });
     if (pending.code !== code) return res.json({ error: 'Неверный код' });
     if (pending.userId !== userId) return res.json({ error: 'Не ваш код' });
+    
     const groupData = pendingGroups.get(parseInt(groupId));
     if (!groupData) return res.json({ error: 'Группа не найдена' });
+    
     verifiedGroups.set(parseInt(groupId), {
         verified: true,
         addedBy: groupData.addedBy,
@@ -173,12 +189,16 @@ app.post('/api/verify-group', async (req, res) => {
         settings: { welcomeMsg: '', goodbyeMsg: '', captchaEnabled: true, respectEnabled: true },
         respects: new Map()
     });
+    
     pendingGroups.delete(parseInt(groupId));
     groupVerificationCodes.delete(parseInt(groupId));
+    
     await bot.sendMessage(parseInt(groupId), `✅ Группа верифицирована!`);
+    
     res.json({ success: true });
 });
 
+// Настройки группы
 app.get('/api/admin/settings', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     res.json({ 
@@ -217,6 +237,7 @@ app.post('/api/admin/respect-toggle', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
+// Пользователи
 app.get('/api/admin/users', adminGuard, async (req, res) => {
     try {
         const members = await bot.getChatAdministrators(req.groupId);
@@ -229,6 +250,7 @@ app.get('/api/admin/users', adminGuard, async (req, res) => {
     } catch (err) { res.json({ error: 'Ошибка' }); }
 });
 
+// Мут
 app.post('/api/admin/mute', adminGuard, async (req, res) => {
     const { username, time, reason } = req.body;
     try {
@@ -248,6 +270,7 @@ app.post('/api/admin/mute', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
+// Размут
 app.post('/api/admin/unmute', adminGuard, async (req, res) => {
     const { username } = req.body;
     try {
@@ -259,6 +282,7 @@ app.post('/api/admin/unmute', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
+// Бан
 app.post('/api/admin/ban', adminGuard, async (req, res) => {
     const { username, reason } = req.body;
     try {
@@ -270,6 +294,7 @@ app.post('/api/admin/ban', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
+// Разбан
 app.post('/api/admin/unban', adminGuard, async (req, res) => {
     const { username } = req.body;
     try {
@@ -281,6 +306,7 @@ app.post('/api/admin/unban', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
+// Префиксы
 app.get('/api/admin/prefixes', adminGuard, async (req, res) => {
     const prefixes = [];
     for (const [userId, data] of purchases.entries()) {
@@ -308,6 +334,7 @@ app.post('/api/admin/removeprefix', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
+// Респекты
 app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     const respects = group?.respects || new Map();
@@ -359,52 +386,38 @@ bot.onText(/\/addgroup/, async (msg) => {
 
 // ========== ОБРАБОТЧИКИ ГРУПП ==========
 
+// Добавление в группу
 bot.on('new_chat_members', async (msg) => {
     const chatId = msg.chat.id;
     for (const member of msg.new_chat_members) {
-        // Если добавляют бота
         if (member.id === parseInt(BOT_ID)) {
             if (isGroupVerified(chatId)) {
                 await bot.sendMessage(chatId, '✅ Группа уже верифицирована');
                 return;
             }
             const secretCode = generateSecretCode();
-            pendingGroups.set(chatId, { 
-                secretCode, 
-                addedBy: msg.from.id, 
-                addedByUsername: msg.from.username || msg.from.first_name 
-            });
+            pendingGroups.set(chatId, { secretCode, addedBy: msg.from.id, addedByUsername: msg.from.username || msg.from.first_name });
             await bot.sendMessage(chatId, `🔐 Код активации: <code>${secretCode}</code>`, { parse_mode: 'HTML' });
             await bot.sendMessage(msg.from.id, `🔐 Код: ${secretCode}`);
         }
         
-        // Если добавляют обычного пользователя (капча)
         if (member.id !== parseInt(BOT_ID) && isGroupVerified(chatId)) {
             const group = verifiedGroups.get(chatId);
             const settings = group?.settings || {};
             
             if (settings.captchaEnabled !== false) {
                 const captchaCode = generateCaptcha();
-                captchaPending.set(`${chatId}_${member.id}`, { 
-                    code: captchaCode, 
-                    date: Date.now(),
-                    attempts: 0
-                });
-                await bot.sendMessage(chatId, `👋 ${member.first_name}, для подтверждения отправьте код:\n<code>${captchaCode}</code>\n\n⏳ У вас 3 минуты.`, { 
-                    parse_mode: 'HTML' 
-                });
+                captchaPending.set(`${chatId}_${member.id}`, { code: captchaCode, date: Date.now() });
+                await bot.sendMessage(chatId, `👋 ${member.first_name}, для подтверждения отправьте код:\n<code>${captchaCode}</code>\n\n⏳ У вас 3 минуты.`, { parse_mode: 'HTML' });
                 
-                // Авто-кик через 3 минуты
                 setTimeout(async () => {
-                    const pending = captchaPending.get(`${chatId}_${member.id}`);
-                    if (pending) {
+                    if (captchaPending.has(`${chatId}_${member.id}`)) {
                         await bot.banChatMember(chatId, member.id);
                         await bot.unbanChatMember(chatId, member.id);
                         await bot.sendMessage(chatId, `❌ ${member.first_name} не прошёл капчу и был удалён.`);
                         captchaPending.delete(`${chatId}_${member.id}`);
                     }
                 }, 3 * 60 * 1000);
-                
             } else if (settings.welcomeMsg) {
                 await bot.sendMessage(chatId, settings.welcomeMsg.replace('{name}', member.first_name));
             }
@@ -412,13 +425,13 @@ bot.on('new_chat_members', async (msg) => {
     }
 });
 
+// Проверка кодов
 bot.onText(/^(.+)$/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const text = match[1];
     if (msg.chat.type === 'private') return;
     
-    // Проверка капчи для новых участников
     const captchaKey = `${chatId}_${userId}`;
     const captcha = captchaPending.get(captchaKey);
     if (captcha && text.trim().toUpperCase() === captcha.code) {
@@ -432,7 +445,6 @@ bot.onText(/^(.+)$/, async (msg, match) => {
         return;
     }
     
-    // Проверка кода верификации группы
     const pending = pendingGroups.get(chatId);
     if (pending && text.trim() === pending.secretCode) {
         verifiedGroups.set(chatId, {
@@ -449,6 +461,7 @@ bot.onText(/^(.+)$/, async (msg, match) => {
     }
 });
 
+// Выход из группы
 bot.on('left_chat_member', async (msg) => {
     const chatId = msg.chat.id;
     const leftMember = msg.left_chat_member;
