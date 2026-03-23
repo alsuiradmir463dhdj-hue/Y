@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Батяра Помощник</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Анимированный фон */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.1);
+            animation: float 20s infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+            100% { transform: translateY(0) rotate(360deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* Анимации появления */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(102, 126, 234, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-fade {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .animate-left {
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .animate-right {
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        .animate-scale {
+            animation: scaleIn 0.4s ease-out;
+        }
+
+        /* Профильная карточка */
+        .profile-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 24px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out, pulse 2s infinite;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffd89b, #c7e9fb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            border: 3px solid rgba(255,255,255,0.5);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            animation: rotate 10s linear infinite;
+            animation-play-state: paused;
+        }
+
+        .avatar:hover {
+            transform: scale(1.1);
+            animation-play-state: running;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .user-id {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .balance-box {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 12px 16px;
+            backdrop-filter: blur(5px);
+        }
+
+        .balance-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .level-badge {
+            background: rgba(255,215,0,0.3);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            backdrop-filter: blur(5px);
+        }
+
+        .xp-bar {
+            margin-top: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            background: linear-gradient(90deg, #ffd89b, #c7e9fb);
+            width: 0%;
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+
+        /* Кнопки с анимацией */
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+            color: #000;
+        }
+
+        /* Карточки */
+        .card {
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease-out;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Табы */
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 8px;
+            border-radius: 60px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Список групп */
+        .group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .group-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+
+        .group-name {
+            font-weight: 500;
+        }
+
+        .group-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .group-status.verified {
+            background: rgba(56, 239, 125, 0.3);
+            color: #38ef7d;
+        }
+
+        .group-status.pending {
+            background: rgba(247, 151, 30, 0.3);
+            color: #ffd200;
+        }
+
+        /* Пользователи */
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+
+        .user-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .user-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+            width: auto;
+            margin: 0;
+            border-radius: 20px;
+        }
+
+        /* Код верификации */
+        .code-box {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 16px;
+            animation: pulse 2s infinite;
+        }
+
+        .code-text {
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            font-family: monospace;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .verify-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .verify-buttons button {
+            flex: 1;
+            margin: 0;
+        }
+
+        /* Сообщения */
+        .message {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .message.success {
+            background: rgba(56, 239, 125, 0.2);
+            border: 1px solid #38ef7d;
+            color: #38ef7d;
+        }
+
+        .message.error {
+            background: rgba(235, 51, 73, 0.2);
+            border: 1px solid #eb3349;
+            color: #eb3349;
+        }
+
+        /* Инпут */
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            font-size: 16px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        /* Скролл */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        /* Загрузка */
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255,255,255,0.6);
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation" id="bgAnimation"></div>
+    
+    <div class="container">
+        <div class="profile-card animate-fade" id="profileCard">
+            <div class="profile-header">
+                <div class="avatar" id="avatar">
+                    👤
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="userName">Загрузка...</div>
+                    <div class="user-id" id="userId">ID: ---</div>
+                    <div class="level-badge" id="levelBadge">Уровень 1</div>
+                </div>
+            </div>
+            <div class="balance-box">
+                <span class="balance-label">⭐ Баланс</span>
+                <span class="balance-amount" id="balanceAmount">0</span>
+            </div>
+            <div class="xp-bar">
+                <div class="xp-fill" id="xpFill"></div>
+            </div>
+            <div class="xp-text" style="font-size: 12px; margin-top: 6px;" id="xpText">XP: 0 / 100</div>
+        </div>
+        
+        <div class="tab-bar">
+            <button class="tab active" onclick="switchTab('groups')">📁 Группы</button>
+            <button class="tab" onclick="switchTab('verify')">🔐 Верификация</button>
+            <button class="tab" onclick="switchTab('users')">👥 Участники</button>
+            <button class="tab" onclick="switchTab('moderation')">🔨 Модерация</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ Настройки</button>
+            <button class="tab" onclick="switchTab('prefixes')">🏷️ Префиксы</button>
+            <button class="tab" onclick="switchTab('stats')">📊 Статистика</button>
+        </div>
+        
+        <!-- Вкладка: Группы -->
+        <div id="tab-groups" class="tab-content active">
+            <div class="card animate-left">
+                <div class="card-title">📁 Мои группы</div>
+                <button class="btn btn-success" onclick="addBotToGroup()">➕ Добавить бота в группу</button>
+                <div id="groupsList" style="margin-top: 16px;">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Вкладка: Верификация -->
+        <div id="tab-verify" class="tab-content">
+            <div class="card animate-scale">
+                <div class="card-title">🔐 Верификация группы</div>
+                <p style="margin-bottom: 16px; opacity: 0.8;">Выберите группу и сгенерируйте код</p>
+                <select id="groupSelect" style="margin-bottom: 16px;">
+                    <option value="">-- Выберите группу --</option>
+                </select>
+                <div id="verifyCodeBox" style="display: none;" class="code-box">
+                    <div class="code-text" id="verifyCodeText">XXXXXX</div>
+                    <button class="btn" onclick="copyCode()">📋 Скопировать код</button>
+                    <div class="verify-buttons">
+                        <button class="btn-success" onclick="confirmGroup()">✅ Подтвердить</button>
+                        <button class="btn-danger" onclick="cancelGroup()">❌ Отменить</button>
+                    </div>
+                </div>
+                <button class="btn" id="genCodeBtn" onclick="generateCode()">🎲 Сгенерировать код</button>
+                <div id="verifyMessage" class="message"></div>
+                <div class="xp-text" style="margin-top: 16px;">💡 Отправьте код в группу, затем нажмите "Подтвердить"</div>
+            </div>
+        </div>
+        
+        <!-- Вкладка: Участники -->
+        <div id="tab-users" class="tab-content">
+            <div class="card animate-right">
+                <div class="card-title">👥 Участники</div>
+                <input type="text" id="searchUser" placeholder="🔍 Поиск по имени" onkeyup="searchUsers()">
+                <div id="usersList">
+                    <div class="loading">Выберите группу</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Вкладка: Модерация -->
+        <div id="tab-moderation" class="tab-content">
+            <div class="card animate-left">
+                <div class="card-title">🔇 Мут</div>
+                <input type="text" id="muteUsername" placeholder="@username">
+                <select id="muteTime">
+                    <option value="5m">5 минут</option>
+                    <option value="30m">30 минут</option>
+                    <option value="1h" selected>1 час</option>
+                    <option value="6h">6 часов</option>
+                    <option value="1d">1 день</option>
+                    <option value="7d">7 дней</option>
+                </select>
+                <input type="text" id="muteReason" placeholder="Причина">
+                <button class="btn" onclick="muteUser()">🔇 Замутить</button>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">🔨 Бан</div>
+                <input type="text" id="banUsername" placeholder="@username">
+                <input type="text" id="banReason" placeholder="Причина">
+                <button class="btn-danger" onclick="banUser()">🔨 Забанить</button>
+            </div>
+            <div class="card animate-left">
+                <div class="card-title">✅ Размут / Разбан</div>
+                <input type="text" id="unmuteUsername" placeholder="@username для размута">
+                <button class="btn-warning" onclick="unmuteUser()">🔊 Размутить</button>
+                <input type="text" id="unbanUsername" placeholder="@username для разбана" style="margin-top:12px;">
+                <button class="btn-warning" onclick="unbanUser()">✅ Разбанить</button>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">⚠️ Предупреждение</div>
+                <input type="text" id="warnUsername" placeholder="@username">
+                <input type="text" id="warnReason" placeholder="Причина">
+                <button class="btn-warning" onclick="warnUser()">⚠️ Выдать предупреждение</button>
+            </div>
+            <div id="modMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Настройки -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card animate-scale">
+                <div class="card-title">👋 Приветствие</div>
+                <textarea id="welcomeMsg" rows="2" placeholder="Текст приветствия. {name} = имя"></textarea>
+                <button class="btn" onclick="saveWelcome()">💾 Сохранить</button>
+            </div>
+            <div class="card animate-left">
+                <div class="card-title">👋 Прощание</div>
+                <textarea id="goodbyeMsg" rows="2" placeholder="Текст прощания. {name} = имя"></textarea>
+                <button class="btn" onclick="saveGoodbye()">💾 Сохранить</button>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">🔒 Капча</div>
+                <label class="switch">
+                    <input type="checkbox" id="captchaEnabled" onchange="toggleCaptcha()">
+                    <span>Включить капчу для новых участников</span>
+                </label>
+            </div>
+            <div class="card animate-left">
+                <div class="card-title">🛡️ Антиспам</div>
+                <label class="switch">
+                    <input type="checkbox" id="antispamEnabled" onchange="toggleAntispam()">
+                    <span>Включить антиспам</span>
+                </label>
+                <input type="number" id="antispamThreshold" placeholder="Сообщений за 10 секунд (по умолч. 5)" style="margin-top: 12px;">
+                <input type="number" id="antispamMuteTime" placeholder="Время мута в секундах (по умолч. 60)">
+                <button class="btn" onclick="saveAntispam()">💾 Сохранить настройки</button>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">📈 Система уровней</div>
+                <label class="switch">
+                    <input type="checkbox" id="levelingEnabled" onchange="toggleLeveling()">
+                    <span>Включить систему уровней</span>
+                </label>
+            </div>
+            <div class="card animate-left">
+                <div class="card-title">📊 Информация о группе</div>
+                <button class="btn" onclick="loadGroupInfo()">🔄 Обновить</button>
+                <div id="groupInfo" style="margin-top: 12px; font-size: 14px;"></div>
+            </div>
+            <div id="setMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Префиксы -->
+        <div id="tab-prefixes" class="tab-content">
+            <div class="card animate-scale">
+                <div class="card-title">🏷️ Выдать префикс</div>
+                <input type="text" id="prefixUser" placeholder="@username">
+                <input type="text" id="prefixName" placeholder="Префикс (например, Помощник)">
+                <button class="btn" onclick="givePrefix()">🎁 Выдать префикс</button>
+                <div class="xp-text">⚠️ Префикс "Админ" недоступен для выдачи</div>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">📋 Список префиксов</div>
+                <div id="prefixesList">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+            <div id="prefMessage" class="message"></div>
+        </div>
+        
+        <!-- Вкладка: Статистика -->
+        <div id="tab-stats" class="tab-content">
+            <div class="card animate-left">
+                <div class="card-title">🏆 Топ участников</div>
+                <div id="leaderboardList">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+            <div class="card animate-right">
+                <div class="card-title">⭐ Топ респектов</div>
+                <div id="respectStatsList">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+            <div class="card animate-scale">
+                <div class="card-title">📊 Моя статистика</div>
+                <div id="myStats">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        let userId = tg.initDataUnsafe?.user?.id;
+        let userFirstName = tg.initDataUnsafe?.user?.first_name || 'Пользователь';
+        let userPhoto = tg.initDataUnsafe?.user?.photo_url;
+        
+        let currentGroupId = null;
+        let pendingCode = null;
+        let selectedGroupId = null;
+        
+        const BOT_USERNAME = 'GguhdxfBOT';
+        
+        // Генерация анимированного фона
+        function createBackground() {
+            const bg = document.getElementById('bgAnimation');
+            for (let i = 0; i < 20; i++) {
+                const circle = document.createElement('div');
+                circle.className = 'bg-circle';
+                const size = Math.random() * 100 + 50;
+                circle.style.width = size + 'px';
+                circle.style.height = size + 'px';
+                circle.style.left = Math.random() * 100 + '%';
+                circle.style.top = Math.random() * 100 + '%';
+                circle.style.animationDelay = Math.random() * 10 + 's';
+                circle.style.animationDuration = Math.random() * 20 + 10 + 's';
+                bg.appendChild(circle);
+            }
+        }
+        
+        // Загрузка профиля
+        async function loadProfile() {
+            document.getElementById('userName').textContent = userFirstName;
+            document.getElementById('userId').textContent = `ID: ${userId}`;
+            
+            if (userPhoto) {
+                document.getElementById('avatar').innerHTML = `<img src="${userPhoto}" alt="avatar">`;
+            } else {
+                document.getElementById('avatar').textContent = userFirstName.charAt(0).toUpperCase();
+            }
+            
+            try {
+                let res = await fetch('/api/balance', {
+                    headers: { 'X-Telegram-User-Id': userId }
+                });
+                let data = await res.json();
+                if (data.stars !== undefined) {
+                    document.getElementById('balanceAmount').textContent = data.stars;
+                    document.getElementById('levelBadge').textContent = `🎚️ Уровень ${data.level || 1}`;
+                    const xp = data.xp || 0;
+                    const xpNeeded = data.xpNeeded || 100;
+                    const percent = (xp / xpNeeded) * 100;
+                    document.getElementById('xpFill').style.width = percent + '%';
+                    document.getElementById('xpText').textContent = `XP: ${xp} / ${xpNeeded}`;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        
+        function showMessage(elId, text, type) {
+            let el = document.getElementById(elId);
+            if (!el) return;
+            el.textContent = text;
+            el.className = `message ${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 4000);
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tab === 'groups') loadGroups();
+            if (tab === 'users') loadUsers();
+            if (tab === 'prefixes') loadPrefixes();
+            if (tab === 'settings') loadSettings();
+            if (tab === 'stats') loadStats();
+        }
+        
+        async function callAPI(endpoint, method = 'GET', data = null) {
+            try {
+                let options = { method, headers: { 'Content-Type': 'application/json', 'X-Telegram-User-Id': userId, 'X-Telegram-Group-Id': currentGroupId } };
+                if (data) options.body = JSON.stringify(data);
+                let res = await fetch(`/api${endpoint}`, options);
+                return await res.json();
+            } catch(e) { return { error: 'Ошибка соединения' }; }
+        }
+        
+        async function callAdminAPI(endpoint, method = 'GET', data = null) {
+            if (!currentGroupId) return { error: 'Выберите группу' };
+            return callAPI(endpoint, method, data);
+        }
+        
+        // Добавить бота в группу
+        function addBotToGroup() {
+            const inviteLink = `https://t.me/${BOT_USERNAME}?startgroup&admin=delete_messages+restrict_members+invite_users+ban_users+pin_messages+change_info`;
+            tg.openTelegramLink(inviteLink);
+            showMessage('verifyMessage', '✅ Переход к добавлению бота', 'success');
+        }
+        
+        // Загрузка групп
+        async function loadGroups() {
+            let container = document.getElementById('groupsList');
+            container.innerHTML = '<div class="loading">Загрузка...</div>';
+            let res = await callAPI('/my-groups');
+            
+            let groupSelect = document.getElementById('groupSelect');
+            groupSelect.innerHTML = '<option value="">-- Выберите группу --</option>';
+            
+            if (res.groups?.length) {
+                container.innerHTML = res.groups.map(g => `
+                    <div class="group-item" onclick="selectGroup(${g.id}, '${g.title}')">
+                        <div>
+                            <div class="group-name">${g.title}</div>
+                            <div style="font-size:12px;">ID: ${g.id}</div>
+                        </div>
+                        <div><span class="group-status ${g.verified ? 'verified' : 'pending'}">${g.verified ? '✅ Верифицирована' : '⏳ Ожидает'}</span></div>
+                    </div>
+                `).join('');
+                
+                res.groups.forEach(g => {
+                    groupSelect.innerHTML += `<option value="${g.id}">${g.title} (${g.verified ? '✅' : '⏳'})</option>`;
+                });
+            } else {
+                container.innerHTML = '<div class="loading">Нет групп. Добавьте бота в группу</div>';
+            }
+        }
+        
+        function selectGroup(groupId, title) {
+            currentGroupId = groupId;
+            showMessage('verifyMessage', `✅ Выбрана группа: ${title}`, 'success');
+            loadUsers();
+            loadSettings();
+            loadPrefixes();
+            loadStats();
+        }
+        
+        // Генерация кода
+        async function generateCode() {
+            let groupId = document.getElementById('groupSelect').value;
+            if (!groupId) {
+                showMessage('verifyMessage', '❌ Сначала выберите группу', 'error');
+                return;
+            }
+            selectedGroupId = groupId;
+            let res = await callAPI('/generate-code', 'POST', { groupId: parseInt(groupId) });
+            if (res.code) {
+                pendingCode = res.code;
+                document.getElementById('verifyCodeBox').style.display = 'block';
+                document.getElementById('verifyCodeText').textContent = res.code;
+                showMessage('verifyMessage', '✅ Код сгенерирован! Отправьте его в группу', 'success');
+            } else {
+                showMessage('verifyMessage', '❌ ' + (res.error || 'Ошибка'), 'error');
+            }
+        }
+        
+        function copyCode() {
+            let code = document.getElementById('verifyCodeText').textContent;
+            navigator.clipboard.writeText(code);
+            showMessage('verifyMessage', '📋 Код скопирован!', 'success');
+        }
+        
+        async function confirmGroup() {
+            if (!selectedGroupId || !pendingCode) {
+                showMessage('verifyMessage', '❌ Сначала сгенерируйте код', 'error');
+                return;
+            }
+            let res = await callAPI('/verify-group', 'POST', { groupId: parseInt(selectedGroupId), code: pendingCode });
+            if (res.success) {
+                showMessage('verifyMessage', '✅ Группа подтверждена! Полный доступ получен', 'success');
+                document.getElementById('verifyCodeBox').style.display = 'none';
+                loadGroups();
+            } else {
+                showMessage('verifyMessage', '❌ ' + (res.error || 'Ошибка'), 'error');
+            }
+        }
+        
+        function cancelGroup() {
+            document.getElementById('verifyCodeBox').style.display = 'none';
+            pendingCode = null;
+            showMessage('verifyMessage', '❌ Верификация отменена', 'error');
+        }
+        
+        // Пользователи
+        async function loadUsers() {
+            if (!currentGroupId) { document.getElementById('usersList').innerHTML = '<div class="loading">Выберите группу</div>'; return; }
+            let container = document.getElementById('usersList');
+            container.innerHTML = '<div class="loading">Загрузка...</div>';
+            let res = await callAdminAPI('/admin/users');
+            if (res.error) { container.innerHTML = `<div class="loading">❌ ${res.error}</div>`; return; }
+            if (res.users?.length) {
+                container.innerHTML = res.users.map(u => `
+                    <div class="user-item">
+                        <div>
+                            <div class="user-name">${u.first_name}</div>
+                            <div style="font-size:12px;">@${u.username || 'нет'} | Уровень ${u.level} | Предупреждений: ${u.warns}</div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn-warning" onclick="quickMute('${u.username}')">🔇</button>
+                            <button class="btn-danger" onclick="quickBan('${u.username}')">🔨</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else { container.innerHTML = '<div class="loading">Нет пользователей</div>'; }
+        }
+        
+        function searchUsers() { let s = document.getElementById('searchUser').value.toLowerCase(); document.querySelectorAll('.user-item').forEach(i => { i.style.display = i.innerText.toLowerCase().includes(s) ? 'flex' : 'none'; }); }
+        
+        // Модерация
+        async function muteUser() { let u = document.getElementById('muteUsername').value, t = document.getElementById('muteTime').value, r = document.getElementById('muteReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAdminAPI('/admin/mute','POST',{username:u,time:t,reason:r}); if(res.success){ showMessage('modMessage',`✅ Замучен`,'success'); document.getElementById('muteUsername').value=''; document.getElementById('muteReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function unmuteUser() { let u = document.getElementById('unmuteUsername').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAdminAPI('/admin/unmute','POST',{username:u}); if(res.success){ showMessage('modMessage',`✅ Размучен`,'success'); document.getElementById('unmuteUsername').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function banUser() { let u = document.getElementById('banUsername').value, r = document.getElementById('banReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAdminAPI('/admin/ban','POST',{username:u,reason:r}); if(res.success){ showMessage('modMessage',`✅ Забанен`,'success'); document.getElementById('banUsername').value=''; document.getElementById('banReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function unbanUser() { let u = document.getElementById('unbanUsername').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAdminAPI('/admin/unban','POST',{username:u}); if(res.success){ showMessage('modMessage',`✅ Разбанен`,'success'); document.getElementById('unbanUsername').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function warnUser() { let u = document.getElementById('warnUsername').value, r = document.getElementById('warnReason').value; if(!u){ showMessage('modMessage','❌ Введите username','error'); return; } let res = await callAdminAPI('/admin/warn','POST',{username:u,reason:r}); if(res.success){ showMessage('modMessage',`✅ Предупреждение выдано`,'success'); document.getElementById('warnUsername').value=''; document.getElementById('warnReason').value=''; loadUsers(); } else { showMessage('modMessage',`❌ ${res.error}`,'error'); } }
+        async function quickMute(u) { document.getElementById('muteUsername').value=u; document.getElementById('muteTime').value='1h'; document.getElementById('muteReason').value='Модерация'; await muteUser(); }
+        async function quickBan(u) { document.getElementById('banUsername').value=u; document.getElementById('banReason').value='Нарушение'; await banUser(); }
+        
+        // Настройки
+        async function loadSettings() { if(!currentGroupId) return; let res = await callAdminAPI('/admin/settings'); if(!res.error){ if(res.welcomeMsg) document.getElementById('welcomeMsg').value=res.welcomeMsg; if(res.goodbyeMsg) document.getElementById('goodbyeMsg').value=res.goodbyeMsg; document.getElementById('captchaEnabled').checked=res.captchaEnabled; document.getElementById('antispamEnabled').checked=res.antispamEnabled; document.getElementById('antispamThreshold').value=res.antispamThreshold||5; document.getElementById('antispamMuteTime').value=res.antispamMuteTime||60; document.getElementById('levelingEnabled').checked=res.levelingEnabled; } }
+        async function saveWelcome() { let w = document.getElementById('welcomeMsg').value; let res = await callAdminAPI('/admin/setwelcome','POST',{welcome:w}); if(res.success) showMessage('setMessage','✅ Приветствие сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
+        async function saveGoodbye() { let g = document.getElementById('goodbyeMsg').value; let res = await callAdminAPI('/admin/setgoodbye','POST',{goodbye:g}); if(res.success) showMessage('setMessage','✅ Прощание сохранено','success'); else showMessage('setMessage','❌ Ошибка','error'); }
+        async function toggleCaptcha() { let e = document.getElementById('captchaEnabled').checked; let res = await callAdminAPI('/admin/captcha','POST',{enabled:e}); if(!res.success){ document.getElementById('captchaEnabled').checked=!e; showMessage('setMessage','❌ Ошибка','error'); } else { showMessage('setMessage',`✅ Капча ${e?'включена':'выключена'}`, 'success'); } }
+        async function toggleAntispam() { let e = document.getElementById('antispamEnabled').checked; saveAntispam(); }
+        async function saveAntispam() { let e = document.getElementById('antispamEnabled').checked; let t = parseInt(document.getElementById('antispamThreshold').value); let m = parseInt(document.getElementById('antispamMuteTime').value); let res = await callAdminAPI('/admin/antispam','POST',{enabled:e,threshold:t,muteTime:m}); if(res.success) showMessage('setMessage','✅ Антиспам сохранён','success'); else showMessage('setMessage','❌ Ошибка','error'); }
+        async function toggleLeveling() { let e = document.getElementById('levelingEnabled').checked; let res = await callAdminAPI('/admin/leveling','POST',{enabled:e}); if(!res.success){ document.getElementById('levelingEnabled').checked=!e; showMessage('setMessage','❌ Ошибка','error'); } else { showMessage('setMessage',`✅ Система уровней ${e?'включена':'выключена'}`, 'success'); } }
+        async function loadGroupInfo() { if(!currentGroupId) return; let res = await callAdminAPI('/admin/settings'); if(res.error){ document.getElementById('groupInfo').innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } document.getElementById('groupInfo').innerHTML=`<div><strong>ID:</strong> ${currentGroupId}</div><div><strong>Капча:</strong> ${res.captchaEnabled?'✅ Вкл':'❌ Выкл'}</div><div><strong>Антиспам:</strong> ${res.antispamEnabled?'✅ Вкл':'❌ Выкл'}</div><div><strong>Уровни:</strong> ${res.levelingEnabled?'✅ Вкл':'❌ Выкл'}</div>`; }
+        
+        // Префиксы
+        async function loadPrefixes() { if(!currentGroupId) return; let c = document.getElementById('prefixesList'); c.innerHTML='<div class="loading">Загрузка...</div>'; let res = await callAdminAPI('/admin/prefixes'); if(res.error){ c.innerHTML=`<div class="loading">❌ ${res.error}</div>`; return; } if(res.prefixes?.length){ c.innerHTML=res.prefixes.map(p=>`<div class="user-item"><div><div class="user-name">${p.first_name}</div><div style="font-size:12px;">🏷️ [${p.prefix}]</div></div><div class="user-actions"><button class="btn-danger" onclick="removePrefix('${p.user_id}')">❌</button></div></div>`).join(''); } else { c.innerHTML='<div class="loading">Нет префиксов</div>'; } }
+        async function givePrefix() { let u = document.getElementById('prefixUser').value, p = document.getElementById('prefixName').value; if(!u||!p){ showMessage('prefMessage','❌ Введите данные','error'); return; } let res = await callAdminAPI('/admin/giveprefix','POST',{username:u,prefix:p}); if(res.success){ showMessage('prefMessage',`✅ Префикс выдан`,'success'); document.getElementById('prefixUser').value=''; document.getElementById('prefixName').value=''; loadPrefixes(); } else { showMessage('prefMessage',`❌ ${res.error}`,'error'); } }
+        async function removePrefix(uid) { let res = await callAdminAPI('/admin/removeprefix','POST',{user_id:uid}); if(res.success){ showMessage('prefMessage','✅ Префикс удалён','success'); loadPrefixes(); } else { showMessage('prefMessage','❌ Ошибка','error'); } }
+        
+        // Статистика
+        async function loadStats() { if(!currentGroupId) { document.getElementById('leaderboardList').innerHTML='<div class="loading">Выберите группу</div>'; return; } let lb = await callAdminAPI('/admin/leaderboard'); if(lb.users?.length){ document.getElementById('leaderboardList').innerHTML=lb.users.map((u,i)=>`<div class="user-item"><div><div class="user-name">${i+1}. ${u.first_name}</div><div style="font-size:12px;">Уровень ${u.level} (${u.xp} XP)</div></div></div>`).join(''); } else { document.getElementById('leaderboardList').innerHTML='<div class="loading">Нет данных</div>'; } let rs = await callAdminAPI('/admin/respect-stats'); if(rs.stats?.length){ document.getElementById('respectStatsList').innerHTML=rs.stats.map((s,i)=>`<div class="user-item"><div><div class="user-name">${i+1}. ${s.first_name}</div><div style="font-size:12px;">⭐ ${s.respects} респектов</div></div></div>`).join(''); } else { document.getElementById('respectStatsList').innerHTML='<div class="loading">Нет данных</div>'; } let bal = await fetch('/api/balance',{headers:{'X-Telegram-User-Id':userId}}); let balData = await bal.json(); document.getElementById('myStats').innerHTML=`<div>⭐ Баланс: ${balData.stars || 0}</div><div>🎚️ Уровень: ${balData.level || 1}</div><div>📊 XP: ${balData.xp || 0}/${balData.xpNeeded || 100}</div><div>👍 Лайки: ${balData.reputation?.likes||0}</div><div>👎 Дизлайки: ${balData.reputation?.dislikes||0}</div><div>💫 Респекты: ${balData.reputation?.respects||0}</div>`; }
+        
+        // Инициализация
+        createBackground();
+        loadProfile();
+        loadGroups();
+    </script>
+</body>
+</html>
