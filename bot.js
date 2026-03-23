@@ -15,64 +15,56 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== ХРАНИЛИЩА ==========
-const userBalance = new Map();           // userId -> { stars, ultraUntil, level, xp }
+const userBalance = new Map();           // userId -> { stars, level, xp, avatar, name }
 const purchases = new Map();              // userId -> { prefix, date }
 const pendingInvoices = new Map();        // invoiceId -> { userId, prefix, type }
-const verifiedGroups = new Map();         // groupId -> { verified, settings, respects, warns, bans, mutes }
-const pendingGroups = new Map();          // groupId -> { secretCode, addedBy }
+const verifiedGroups = new Map();         // groupId -> { verified, settings, respects, addedBy, title }
+const pendingGroups = new Map();          // groupId -> { secretCode, addedBy, addedByUsername }
 const groupVerificationCodes = new Map(); // groupId -> { code, userId }
-const captchaPending = new Map();         // groupId_userId -> { code, date, attempts }
-const warns = new Map();                  // groupId_userId -> { count, reasons, dates }
+const captchaPending = new Map();         // groupId_userId -> { code, date }
+const warns = new Map();                  // groupId_userId -> { count, reasons }
 const mutes = new Map();                  // groupId_userId -> { until, reason }
 const bans = new Map();                   // groupId_userId -> { reason, date }
-const antispam = new Map();               // groupId_userId -> { messages, lastMessage, lastTime }
-const userWarnings = new Map();           // userId -> { warns, lastWarn }
-const userReputation = new Map();         // userId -> { likes, dislikes, respects }
+const antispam = new Map();               // groupId_userId -> { messages, lastTime }
 const userLevels = new Map();             // userId -> { level, xp, lastMessage }
-const userReferrals = new Map();          // userId -> { code, invited, invites }
-const scheduledMessages = new Map();      // groupId -> [{ time, message, interval }]
-const polls = new Map();                  // groupId_messageId -> { question, options, votes, createdBy }
-const giveaway = new Map();               // groupId -> { prize, winners, participants, endTime }
+const userReputation = new Map();         // userId -> { likes, dislikes, respects }
+const userReferrals = new Map();          // userId -> { code, invites }
 const filterWords = new Map();            // groupId -> [badWords]
 const autoResponses = new Map();          // groupId -> Map{trigger -> response}
-const tempRoles = new Map();              // groupId_userId -> { role, until }
-const groupLogs = new Map();              // groupId -> { channelId, enabled }
+const groupLogs = new Map();              // groupId -> [{ action, user, admin, reason, date }]
 
 // ========== НАСТРОЙКИ ПО УМОЛЧАНИЮ ==========
 const DEFAULT_SETTINGS = {
-    welcomeMsg: '',
-    goodbyeMsg: '',
+    welcomeMsg: '👋 Добро пожаловать, {name}!',
+    goodbyeMsg: '👋 {name} покинул чат',
     captchaEnabled: true,
     respectEnabled: true,
     antispamEnabled: true,
-    antispamThreshold: 5,      // сообщений за 10 секунд
-    antispamMuteTime: 60,       // секунд мута за спам
-    warnLimit: 3,               // предупреждений до мута
-    warnMuteTime: 300,          // секунд мута после 3 предупреждений
-    autoDeleteLinks: false,
-    autoDeleteProfanity: false,
+    antispamThreshold: 5,
+    antispamMuteTime: 60,
+    warnLimit: 3,
+    warnMuteTime: 300,
+    autoDeleteLinks: true,
+    autoDeleteProfanity: true,
     levelingEnabled: true,
-    levelUpMessage: true,
     referralEnabled: true,
-    referralBonus: 10,          // звёзд за приглашение
-    welcomeImage: false,
-    goodbyeImage: false,
-    autoRole: '',
-    vipRole: '',
-    adminCommands: true,
-    userCommands: true
+    referralBonus: 10,
+    slowMode: false,
+    slowModeSeconds: 5
 };
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
 function generateSecretCode() {
-    const words = ['яблоко', 'груша', 'вишня', 'персик', 'манго', 'киви', 'лимон', 'апельсин'];
+    const words = ['apple', 'peach', 'mango', 'kiwi', 'lemon', 'grape', 'berry', 'plum', 'cherry', 'orange'];
     return `${words[Math.floor(Math.random() * words.length)]}${Math.floor(Math.random() * 100)}`;
 }
 
 function generateCaptcha() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
     let code = '';
-    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < 4; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
     return code;
 }
 
@@ -82,11 +74,6 @@ function generateReferralCode(userId) {
 
 function isGroupVerified(chatId) {
     return verifiedGroups.get(chatId)?.verified === true;
-}
-
-function hasUltra(userId) {
-    const user = userBalance.get(userId);
-    return user?.ultraUntil && user.ultraUntil > Date.now();
 }
 
 async function isAdminInGroup(chatId, userId) {
@@ -107,8 +94,15 @@ async function adminGuard(req, res, next) {
     next();
 }
 
+function addLog(groupId, action, userId, adminId, reason) {
+    const logs = groupLogs.get(groupId) || [];
+    logs.unshift({ action, userId, adminId, reason, date: new Date().toISOString() });
+    if (logs.length > 100) logs.pop();
+    groupLogs.set(groupId, logs);
+}
+
 // ========== МОДЕРАЦИЯ ==========
-async function muteUser(chatId, userId, durationSeconds, reason = 'Не указана') {
+async function muteUser(chatId, userId, durationSeconds, reason = 'Не указана', adminId = null) {
     try {
         const untilDate = Math.floor(Date.now() / 1000) + durationSeconds;
         await bot.restrictChatMember(chatId, userId, {
@@ -120,13 +114,14 @@ async function muteUser(chatId, userId, durationSeconds, reason = 'Не указ
             until_date: untilDate
         });
         mutes.set(`${chatId}_${userId}`, { until: Date.now() + durationSeconds * 1000, reason });
+        addLog(chatId, 'mute', userId, adminId, reason);
         const dateStr = new Date(untilDate * 1000).toLocaleString();
         await bot.sendMessage(chatId, `🔇 Пользователь замьючен до ${dateStr}\nПричина: ${reason}`);
         return true;
     } catch { return false; }
 }
 
-async function unmuteUser(chatId, userId) {
+async function unmuteUser(chatId, userId, adminId = null) {
     try {
         await bot.restrictChatMember(chatId, userId, {
             can_send_messages: true,
@@ -136,24 +131,27 @@ async function unmuteUser(chatId, userId) {
             can_add_web_page_previews: true
         });
         mutes.delete(`${chatId}_${userId}`);
+        addLog(chatId, 'unmute', userId, adminId, '');
         await bot.sendMessage(chatId, `🔊 Пользователь размьючен`);
         return true;
     } catch { return false; }
 }
 
-async function banUser(chatId, userId, reason = 'Не указана') {
+async function banUser(chatId, userId, reason = 'Не указана', adminId = null) {
     try {
         await bot.banChatMember(chatId, userId);
         bans.set(`${chatId}_${userId}`, { reason, date: Date.now() });
+        addLog(chatId, 'ban', userId, adminId, reason);
         await bot.sendMessage(chatId, `🔨 Пользователь забанен\nПричина: ${reason}`);
         return true;
     } catch { return false; }
 }
 
-async function unbanUser(chatId, userId) {
+async function unbanUser(chatId, userId, adminId = null) {
     try {
         await bot.unbanChatMember(chatId, userId);
         bans.delete(`${chatId}_${userId}`);
+        addLog(chatId, 'unban', userId, adminId, '');
         await bot.sendMessage(chatId, `✅ Пользователь разбанен`);
         return true;
     } catch { return false; }
@@ -161,19 +159,19 @@ async function unbanUser(chatId, userId) {
 
 async function warnUser(chatId, userId, reason, adminId) {
     const key = `${chatId}_${userId}`;
-    const userWarn = warns.get(key) || { count: 0, reasons: [], dates: [] };
+    const userWarn = warns.get(key) || { count: 0, reasons: [] };
     userWarn.count++;
     userWarn.reasons.push(reason);
-    userWarn.dates.push(Date.now());
     warns.set(key, userWarn);
+    addLog(chatId, 'warn', userId, adminId, reason);
     
     const group = verifiedGroups.get(chatId);
     const settings = group?.settings || DEFAULT_SETTINGS;
     
-    await bot.sendMessage(chatId, `⚠️ ${userId} получил предупреждение (${userWarn.count}/${settings.warnLimit})\nПричина: ${reason}`);
+    await bot.sendMessage(chatId, `⚠️ Пользователь получил предупреждение (${userWarn.count}/${settings.warnLimit})\nПричина: ${reason}`);
     
     if (userWarn.count >= settings.warnLimit) {
-        await muteUser(chatId, userId, settings.warnMuteTime, `Превышен лимит предупреждений (${settings.warnLimit})`);
+        await muteUser(chatId, userId, settings.warnMuteTime, `Превышен лимит предупреждений (${settings.warnLimit})`, adminId);
         warns.delete(key);
     }
     return userWarn.count;
@@ -183,39 +181,26 @@ async function warnUser(chatId, userId, reason, adminId) {
 async function checkSpam(chatId, userId, messageText) {
     const key = `${chatId}_${userId}`;
     const now = Date.now();
-    const data = antispam.get(key) || { messages: [], lastMessage: '', lastTime: now };
+    const data = antispam.get(key) || { messages: [], lastTime: now };
     
     data.messages = data.messages.filter(t => now - t < 10000);
     data.messages.push(now);
     
-    if (data.messages.length > 5) {
-        const group = verifiedGroups.get(chatId);
-        const settings = group?.settings || DEFAULT_SETTINGS;
+    const group = verifiedGroups.get(chatId);
+    const settings = group?.settings || DEFAULT_SETTINGS;
+    
+    if (data.messages.length > settings.antispamThreshold) {
         await muteUser(chatId, userId, settings.antispamMuteTime, 'Спам (автоматически)');
         antispam.delete(key);
         return true;
     }
     
-    if (data.lastMessage === messageText && messageText.length > 3) {
-        data.sameCount = (data.sameCount || 0) + 1;
-        if (data.sameCount > 3) {
-            await muteUser(chatId, userId, 300, 'Повторяющиеся сообщения');
-            antispam.delete(key);
-            return true;
-        }
-    } else {
-        data.sameCount = 0;
-    }
-    
-    data.lastMessage = messageText;
-    data.lastTime = now;
     antispam.set(key, data);
     return false;
 }
 
-// ========== ФИЛЬТРЫ ==========
 function containsBadWords(text, groupId) {
-    const badWords = filterWords.get(groupId) || ['мат', 'хуй', 'пизда', 'бля', 'сука', 'ebat', 'fuck', 'shit'];
+    const badWords = filterWords.get(groupId) || ['хуй', 'пизда', 'бля', 'сука', 'ебат', 'fuck', 'shit', 'cock', 'dick'];
     const lowerText = text.toLowerCase();
     return badWords.some(word => lowerText.includes(word));
 }
@@ -225,7 +210,13 @@ function containsLink(text) {
     return urlRegex.test(text);
 }
 
-// ========== СИСТЕМА РЕСПЕКТОВ И РЕПУТАЦИИ ==========
+function isAllCaps(text) {
+    const letters = text.replace(/[^a-zA-Zа-яА-Я]/g, '');
+    if (letters.length < 5) return false;
+    return letters === letters.toUpperCase();
+}
+
+// ========== СИСТЕМА РЕСПЕКТОВ ==========
 async function addRespect(chatId, fromId, targetId, username = '') {
     if (!isGroupVerified(chatId)) return false;
     if (fromId === targetId) return false;
@@ -247,29 +238,11 @@ async function addRespect(chatId, fromId, targetId, username = '') {
     return true;
 }
 
-async function addLike(chatId, fromId, targetId) {
-    if (fromId === targetId) return false;
-    const rep = userReputation.get(targetId) || { likes: 0, dislikes: 0, respects: 0 };
-    rep.likes = (rep.likes || 0) + 1;
-    userReputation.set(targetId, rep);
-    await bot.sendMessage(chatId, `👍 ${fromId} поставил лайк ${targetId}!`);
-    return true;
-}
-
-async function addDislike(chatId, fromId, targetId) {
-    if (fromId === targetId) return false;
-    const rep = userReputation.get(targetId) || { likes: 0, dislikes: 0, respects: 0 };
-    rep.dislikes = (rep.dislikes || 0) + 1;
-    userReputation.set(targetId, rep);
-    await bot.sendMessage(chatId, `👎 ${fromId} поставил дизлайк ${targetId}!`);
-    return true;
-}
-
 // ========== СИСТЕМА УРОВНЕЙ ==========
 async function addXP(userId, amount) {
     const user = userLevels.get(userId) || { level: 1, xp: 0, lastMessage: 0 };
     const now = Date.now();
-    if (now - user.lastMessage < 60000) return; // 1 минута кд на XP
+    if (now - user.lastMessage < 60000) return user;
     
     user.xp += amount;
     user.lastMessage = now;
@@ -287,8 +260,10 @@ async function addXP(userId, amount) {
     
     if (leveledUp) {
         const stars = user.level * 5;
-        const balance = userBalance.get(userId) || { stars: 5 };
-        balance.stars += stars;
+        const balance = userBalance.get(userId) || { stars: 5, level: user.level, xp: user.xp };
+        balance.stars = (balance.stars || 5) + stars;
+        balance.level = user.level;
+        balance.xp = user.xp;
         userBalance.set(userId, balance);
         await bot.sendMessage(userId, `🎉 Поздравляю! Вы достигли ${user.level} уровня! Получено ${stars} ⭐ звёзд!`);
     }
@@ -298,7 +273,7 @@ async function addXP(userId, amount) {
 
 // ========== РЕФЕРАЛЬНАЯ СИСТЕМА ==========
 async function createReferralCode(userId) {
-    const user = userReferrals.get(userId) || { code: null, invited: [], invites: 0 };
+    const user = userReferrals.get(userId) || { code: null, invites: 0 };
     if (!user.code) {
         user.code = generateReferralCode(userId);
         userReferrals.set(userId, user);
@@ -309,7 +284,8 @@ async function createReferralCode(userId) {
 async function useReferralCode(userId, code) {
     for (const [refUserId, data] of userReferrals.entries()) {
         if (data.code === code && refUserId !== userId) {
-            if (data.invited.includes(userId)) return false;
+            if (data.invited?.includes(userId)) return false;
+            data.invited = data.invited || [];
             data.invited.push(userId);
             data.invites++;
             userReferrals.set(refUserId, data);
@@ -325,89 +301,53 @@ async function useReferralCode(userId, code) {
     return false;
 }
 
-// ========== ОПРОСЫ ==========
-async function createPoll(chatId, question, options, createdBy) {
-    const message = await bot.sendPoll(chatId, question, options, {
-        is_anonymous: false,
-        allows_multiple_answers: true
-    });
-    polls.set(`${chatId}_${message.message_id}`, {
-        question, options, votes: {}, createdBy, createdAt: Date.now()
-    });
-    return message;
-}
-
-// ========== РОЗЫГРЫШИ ==========
-async function createGiveaway(chatId, prize, duration, createdBy) {
-    const endTime = Date.now() + duration * 1000;
-    giveaway.set(chatId, { prize, winners: [], participants: [], endTime, createdBy });
-    await bot.sendMessage(chatId, `🎁 РОЗЫГРЫШ!\nПриз: ${prize}\nУчаствуйте, написав /join!\n⏳ Заканчивается через ${Math.floor(duration / 60)} минут`);
-    
-    setTimeout(async () => {
-        const g = giveaway.get(chatId);
-        if (g && g.participants.length > 0) {
-            const winner = g.participants[Math.floor(Math.random() * g.participants.length)];
-            await bot.sendMessage(chatId, `🎉 Победитель розыгрыша: ${winner}!\nПриз: ${prize}`);
-            giveaway.delete(chatId);
-        }
-    }, duration * 1000);
-}
-
-// ========== АВТООТВЕТЫ ==========
-function addAutoResponse(groupId, trigger, response) {
-    const responses = autoResponses.get(groupId) || new Map();
-    responses.set(trigger.toLowerCase(), response);
-    autoResponses.set(groupId, responses);
-}
-
-async function checkAutoResponse(chatId, text) {
-    const responses = autoResponses.get(chatId);
-    if (!responses) return false;
-    const lowerText = text.toLowerCase();
-    for (const [trigger, response] of responses.entries()) {
-        if (lowerText.includes(trigger)) {
-            await bot.sendMessage(chatId, response);
-            return true;
-        }
-    }
-    return false;
-}
-
 // ========== API ==========
 app.use(express.json());
 app.use(express.static('public'));
 
-// Баланс и уровни
 app.get('/api/balance', (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
     const user = userBalance.get(userId) || { stars: 5 };
     const level = userLevels.get(userId) || { level: 1, xp: 0 };
     const rep = userReputation.get(userId) || { likes: 0, dislikes: 0, respects: 0 };
-    res.json({ stars: user.stars, level: level.level, xp: level.xp, reputation: rep });
+    res.json({ 
+        stars: user.stars, 
+        level: level.level, 
+        xp: level.xp,
+        xpNeeded: level.level * 100,
+        reputation: rep,
+        ultraUntil: user.ultraUntil
+    });
 });
 
-// Реферальный код
 app.get('/api/referral', (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
+    createReferralCode(userId);
     const user = userReferrals.get(userId) || { code: null, invites: 0 };
     res.json({ code: user.code, invites: user.invites });
 });
 
-// Мои группы
 app.get('/api/my-groups', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ groups: [] });
     const groups = [];
+    
     for (const [groupId, data] of verifiedGroups.entries()) {
         if (data.addedBy === userId) {
             try {
                 const chat = await bot.getChat(groupId);
-                groups.push({ id: groupId, title: chat.title, verified: true });
+                groups.push({ 
+                    id: groupId, 
+                    title: chat.title, 
+                    verified: true,
+                    members: await bot.getChatMembersCount(groupId)
+                });
             } catch (err) {}
         }
     }
+    
     for (const [groupId, data] of pendingGroups.entries()) {
         if (data.addedBy === userId) {
             try {
@@ -416,10 +356,10 @@ app.get('/api/my-groups', async (req, res) => {
             } catch (err) {}
         }
     }
+    
     res.json({ groups });
 });
 
-// Генерация кода верификации
 app.post('/api/generate-code', async (req, res) => {
     const userId = parseInt(req.headers['x-telegram-user-id']);
     if (!userId) return res.json({ error: 'Не авторизован' });
@@ -430,13 +370,12 @@ app.post('/api/generate-code', async (req, res) => {
             break;
         }
     }
-    if (!targetGroup) return res.json({ error: 'Нет групп для верификации' });
+    if (!targetGroup) return res.json({ error: 'Нет групп для верификации. Добавьте бота в группу' });
     const code = generateSecretCode();
     groupVerificationCodes.set(targetGroup.id, { code, userId, date: Date.now() });
     res.json({ code, groupId: targetGroup.id });
 });
 
-// Подтверждение группы
 app.post('/api/verify-group', async (req, res) => {
     const { groupId, code } = req.body;
     const userId = parseInt(req.headers['x-telegram-user-id']);
@@ -460,11 +399,9 @@ app.post('/api/verify-group', async (req, res) => {
     res.json({ success: true });
 });
 
-// Настройки группы
 app.get('/api/admin/settings', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
-    const settings = group?.settings || DEFAULT_SETTINGS;
-    res.json(settings);
+    res.json(group?.settings || DEFAULT_SETTINGS);
 });
 
 app.post('/api/admin/setwelcome', adminGuard, async (req, res) => {
@@ -492,7 +429,7 @@ app.post('/api/admin/antispam', adminGuard, async (req, res) => {
     const { enabled, threshold, muteTime } = req.body;
     const group = verifiedGroups.get(req.groupId);
     if (group) {
-        group.settings.antispamEnabled = enabled;
+        if (enabled !== undefined) group.settings.antispamEnabled = enabled;
         if (threshold) group.settings.antispamThreshold = threshold;
         if (muteTime) group.settings.antispamMuteTime = muteTime;
         verifiedGroups.set(req.groupId, group);
@@ -502,14 +439,14 @@ app.post('/api/admin/antispam', adminGuard, async (req, res) => {
 
 app.post('/api/admin/filter', adminGuard, async (req, res) => {
     const { add, remove, word } = req.body;
-    const words = filterWords.get(req.groupId) || [...DEFAULT_SETTINGS.badWords];
-    if (add && word) words.push(word.toLowerCase());
+    const words = filterWords.get(req.groupId) || [];
+    if (add && word && !words.includes(word.toLowerCase())) words.push(word.toLowerCase());
     if (remove && word) {
         const index = words.indexOf(word.toLowerCase());
         if (index > -1) words.splice(index, 1);
     }
     filterWords.set(req.groupId, words);
-    res.json({ success: true });
+    res.json({ success: true, words });
 });
 
 app.post('/api/admin/autoresponse', adminGuard, async (req, res) => {
@@ -539,18 +476,6 @@ app.post('/api/admin/leveling', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/admin/referral', adminGuard, async (req, res) => {
-    const { enabled, bonus } = req.body;
-    const group = verifiedGroups.get(req.groupId);
-    if (group) {
-        if (enabled !== undefined) group.settings.referralEnabled = enabled;
-        if (bonus) group.settings.referralBonus = bonus;
-        verifiedGroups.set(req.groupId, group);
-    }
-    res.json({ success: true });
-});
-
-// Пользователи
 app.get('/api/admin/users', adminGuard, async (req, res) => {
     try {
         const members = await bot.getChatAdministrators(req.groupId);
@@ -558,13 +483,13 @@ app.get('/api/admin/users', adminGuard, async (req, res) => {
         const users = await Promise.all(members.map(async m => {
             const warnsData = warns.get(`${req.groupId}_${m.user.id}`);
             const level = userLevels.get(m.user.id) || { level: 1 };
-            const rep = userReputation.get(m.user.id) || { likes: 0, dislikes: 0, respects: 0 };
             return {
-                id: m.user.id, first_name: m.user.first_name, username: m.user.username,
+                id: m.user.id,
+                first_name: m.user.first_name,
+                username: m.user.username,
                 respects: respects.get(m.user.id) || 0,
                 warns: warnsData?.count || 0,
                 level: level.level,
-                reputation: rep,
                 is_muted: mutes.has(`${req.groupId}_${m.user.id}`),
                 is_banned: bans.has(`${req.groupId}_${m.user.id}`)
             };
@@ -573,7 +498,6 @@ app.get('/api/admin/users', adminGuard, async (req, res) => {
     } catch (err) { res.json({ error: 'Ошибка' }); }
 });
 
-// Модерация
 app.post('/api/admin/mute', adminGuard, async (req, res) => {
     const { username, time, reason } = req.body;
     try {
@@ -588,7 +512,7 @@ app.post('/api/admin/mute', adminGuard, async (req, res) => {
             if (unit === 'h') seconds = val * 3600;
             if (unit === 'd') seconds = val * 86400;
         }
-        await muteUser(req.groupId, user.user.id, seconds, reason);
+        await muteUser(req.groupId, user.user.id, seconds, reason, req.adminId);
         res.json({ success: true });
     } catch { res.json({ error: 'Ошибка' }); }
 });
@@ -599,7 +523,7 @@ app.post('/api/admin/unmute', adminGuard, async (req, res) => {
         const members = await bot.getChatAdministrators(req.groupId);
         const user = members.find(m => m.user.username === username);
         if (!user) return res.json({ error: 'Пользователь не найден' });
-        await unmuteUser(req.groupId, user.user.id);
+        await unmuteUser(req.groupId, user.user.id, req.adminId);
         res.json({ success: true });
     } catch { res.json({ error: 'Ошибка' }); }
 });
@@ -610,7 +534,7 @@ app.post('/api/admin/ban', adminGuard, async (req, res) => {
         const members = await bot.getChatAdministrators(req.groupId);
         const user = members.find(m => m.user.username === username);
         if (!user) return res.json({ error: 'Пользователь не найден' });
-        await banUser(req.groupId, user.user.id, reason);
+        await banUser(req.groupId, user.user.id, reason, req.adminId);
         res.json({ success: true });
     } catch { res.json({ error: 'Ошибка' }); }
 });
@@ -621,7 +545,7 @@ app.post('/api/admin/unban', adminGuard, async (req, res) => {
         const members = await bot.getChatAdministrators(req.groupId);
         const user = members.find(m => m.user.username === username);
         if (!user) return res.json({ error: 'Пользователь не найден' });
-        await unbanUser(req.groupId, user.user.id);
+        await unbanUser(req.groupId, user.user.id, req.adminId);
         res.json({ success: true });
     } catch { res.json({ error: 'Ошибка' }); }
 });
@@ -637,18 +561,11 @@ app.post('/api/admin/warn', adminGuard, async (req, res) => {
     } catch { res.json({ error: 'Ошибка' }); }
 });
 
-app.get('/api/admin/warns', adminGuard, async (req, res) => {
-    const warnsList = [];
-    for (const [key, data] of warns.entries()) {
-        if (key.startsWith(`${req.groupId}_`)) {
-            const userId = key.split('_')[1];
-            warnsList.push({ user_id: userId, count: data.count, reasons: data.reasons });
-        }
-    }
-    res.json({ warns: warnsList });
+app.get('/api/admin/logs', adminGuard, async (req, res) => {
+    const logs = groupLogs.get(req.groupId) || [];
+    res.json({ logs });
 });
 
-// Префиксы
 app.get('/api/admin/prefixes', adminGuard, async (req, res) => {
     const prefixes = [];
     for (const [userId, data] of purchases.entries()) {
@@ -676,7 +593,6 @@ app.post('/api/admin/removeprefix', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
-// Респекты и репутация
 app.get('/api/admin/respect-stats', adminGuard, async (req, res) => {
     const group = verifiedGroups.get(req.groupId);
     const respects = group?.respects || new Map();
@@ -698,7 +614,6 @@ app.post('/api/admin/respect-toggle', adminGuard, async (req, res) => {
     res.json({ success: true });
 });
 
-// Рейтинг
 app.get('/api/admin/leaderboard', adminGuard, async (req, res) => {
     const users = [];
     for (const [userId, level] of userLevels.entries()) {
@@ -720,22 +635,23 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     const referralCode = match[1];
     
     if (referralCode && referralCode !== 'start') {
-        const used = await useReferralCode(userId, referralCode);
-        if (used) {
-            await bot.sendMessage(chatId, `🎉 Вы использовали реферальный код! Получено 5 ⭐ звёзд!`);
-        }
+        await useReferralCode(userId, referralCode);
     }
     
     if (!userBalance.has(userId)) userBalance.set(userId, { stars: 5 });
     const balance = userBalance.get(userId);
     const level = userLevels.get(userId) || { level: 1, xp: 0 };
     const refCode = await createReferralCode(userId);
+    const userPhoto = await bot.getUserProfilePhotos(userId, { limit: 1 });
+    const avatarUrl = userPhoto.total_count > 0 
+        ? await bot.getFileLink(userPhoto.photos[0][0].file_id)
+        : null;
     
     await bot.sendMessage(chatId, `👋 Привет, ${msg.from.first_name}!\n\n⭐ Баланс: ${balance.stars} звёзд\n🎚️ Уровень: ${level.level}\n📊 XP: ${level.xp}/${level.level * 100}\n🔗 Реферальный код: \`${refCode}\`\n\nСпасибо, что используете меня!\n\n🔗 Мини-приложение: ${APP_URL}?user_id=${userId}`);
 });
 
 bot.onText(/\/help/, async (msg) => {
-    await bot.sendMessage(msg.chat.id, `📋 Команды:
+    await bot.sendMessage(msg.chat.id, `📋 **Команды Батяра Помощник**
 
 👤 **Пользовательские:**
 /start - приветствие
@@ -745,14 +661,11 @@ bot.onText(/\/help/, async (msg) => {
 /level - мой уровень
 /rank - мой рейтинг
 /rep - моя репутация
-/referral - мой реферальный код
-/leaderboard - топ пользователей
+/referral - реферальный код
+/leaderboard - топ участников
 /respect @username - дать респект
-/like @username - лайк
-/dislike @username - дизлайк
-/warns - мои предупреждения
 
-👮 **Админ-команды (в группе):**
+👮 **Админ-команды:**
 /mute @username [время] [причина] - замутить
 /unmute @username - размутить
 /ban @username [причина] - забанить
@@ -760,14 +673,11 @@ bot.onText(/\/help/, async (msg) => {
 /warn @username [причина] - предупреждение
 /kick @username - кикнуть
 /purge [количество] - очистить чат
-/poll [вопрос] [варианты] - создать опрос
-/giveaway [приз] [минуты] - розыгрыш
 /setwelcome [текст] - приветствие
 /setgoodbye [текст] - прощание
 /captcha on/off - капча
 /antispam on/off - антиспам
 /leveling on/off - система уровней
-/filter add/remove [слово] - фильтр мата
 
 ⭐ **Звёзды:**
 • Префикс — 50 ⭐
@@ -831,40 +741,6 @@ bot.onText(/\/respect @(\w+)/i, async (msg, match) => {
     } catch (err) {}
 });
 
-bot.onText(/\/like @(\w+)/i, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const fromId = msg.from.id;
-    const targetUsername = match[1];
-    try {
-        const members = await bot.getChatAdministrators(chatId);
-        const target = members.find(m => m.user.username === targetUsername);
-        if (!target) return;
-        await addLike(chatId, fromId, target.user.id);
-    } catch (err) {}
-});
-
-bot.onText(/\/dislike @(\w+)/i, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const fromId = msg.from.id;
-    const targetUsername = match[1];
-    try {
-        const members = await bot.getChatAdministrators(chatId);
-        const target = members.find(m => m.user.username === targetUsername);
-        if (!target) return;
-        await addDislike(chatId, fromId, target.user.id);
-    } catch (err) {}
-});
-
-bot.onText(/\/warns/, async (msg) => {
-    const userId = msg.from.id;
-    const warnsData = warns.get(`${msg.chat.id}_${userId}`);
-    if (!warnsData || warnsData.count === 0) {
-        await bot.sendMessage(msg.chat.id, `✅ У вас нет предупреждений`);
-    } else {
-        await bot.sendMessage(msg.chat.id, `⚠️ У вас ${warnsData.count} предупреждений\nПричины: ${warnsData.reasons.join(', ')}`);
-    }
-});
-
 bot.onText(/\/mute @(\w+)(?: (\d+[smhd]))?(?: (.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const adminId = msg.from.id;
@@ -882,7 +758,7 @@ bot.onText(/\/mute @(\w+)(?: (\d+[smhd]))?(?: (.+))?/, async (msg, match) => {
         const members = await bot.getChatAdministrators(chatId);
         const user = members.find(m => m.user.username === username);
         if (!user) return;
-        await muteUser(chatId, user.user.id, seconds, reason);
+        await muteUser(chatId, user.user.id, seconds, reason, adminId);
     } catch (err) {}
 });
 
@@ -895,7 +771,7 @@ bot.onText(/\/unmute @(\w+)/, async (msg, match) => {
         const members = await bot.getChatAdministrators(chatId);
         const user = members.find(m => m.user.username === username);
         if (!user) return;
-        await unmuteUser(chatId, user.user.id);
+        await unmuteUser(chatId, user.user.id, adminId);
     } catch (err) {}
 });
 
@@ -909,7 +785,7 @@ bot.onText(/\/ban @(\w+)(?: (.+))?/, async (msg, match) => {
         const members = await bot.getChatAdministrators(chatId);
         const user = members.find(m => m.user.username === username);
         if (!user) return;
-        await banUser(chatId, user.user.id, reason);
+        await banUser(chatId, user.user.id, reason, adminId);
     } catch (err) {}
 });
 
@@ -922,7 +798,7 @@ bot.onText(/\/unban @(\w+)/, async (msg, match) => {
         const members = await bot.getChatAdministrators(chatId);
         const user = members.find(m => m.user.username === username);
         if (!user) return;
-        await unbanUser(chatId, user.user.id);
+        await unbanUser(chatId, user.user.id, adminId);
     } catch (err) {}
 });
 
@@ -959,8 +835,7 @@ bot.onText(/\/purge (\d+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const adminId = msg.from.id;
     if (!await isAdminInGroup(chatId, adminId)) return;
-    const count = parseInt(match[1]);
-    if (count > 100) return;
+    const count = Math.min(parseInt(match[1]), 100);
     try {
         const messages = await bot.getChat(chatId);
         for (let i = 0; i < count; i++) {
@@ -968,35 +843,6 @@ bot.onText(/\/purge (\d+)/, async (msg, match) => {
         }
         await bot.sendMessage(chatId, `✅ Удалено ${count} сообщений`);
     } catch (err) {}
-});
-
-bot.onText(/\/poll (.+?)\|(.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const adminId = msg.from.id;
-    if (!await isAdminInGroup(chatId, adminId)) return;
-    const question = match[1];
-    const options = match[2].split(',');
-    await createPoll(chatId, question, options, adminId);
-});
-
-bot.onText(/\/giveaway (.+?) (\d+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const adminId = msg.from.id;
-    if (!await isAdminInGroup(chatId, adminId)) return;
-    const prize = match[1];
-    const minutes = parseInt(match[2]);
-    await createGiveaway(chatId, prize, minutes * 60, adminId);
-});
-
-bot.onText(/\/join/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const g = giveaway.get(chatId);
-    if (g && !g.participants.includes(userId)) {
-        g.participants.push(userId);
-        giveaway.set(chatId, g);
-        await bot.sendMessage(chatId, `✅ ${msg.from.first_name} участвует в розыгрыше!`);
-    }
 });
 
 bot.onText(/\/setwelcome (.+)/, async (msg, match) => {
@@ -1083,7 +929,6 @@ bot.onText(/\/app/, async (msg) => {
 
 // ========== ОБРАБОТЧИКИ СООБЩЕНИЙ ==========
 
-// Антиспам, фильтры, уровни
 bot.on('message', async (msg) => {
     if (msg.chat.type === 'private') return;
     if (!isGroupVerified(msg.chat.id)) return;
@@ -1091,7 +936,6 @@ bot.on('message', async (msg) => {
     const group = verifiedGroups.get(msg.chat.id);
     const settings = group?.settings || DEFAULT_SETTINGS;
     
-    // Антиспам
     if (settings.antispamEnabled) {
         const isSpam = await checkSpam(msg.chat.id, msg.from.id, msg.text || '');
         if (isSpam) {
@@ -1100,37 +944,46 @@ bot.on('message', async (msg) => {
         }
     }
     
-    // Фильтр мата
-    if (msg.text && containsBadWords(msg.text, msg.chat.id)) {
+    if (msg.text && settings.autoDeleteProfanity && containsBadWords(msg.text, msg.chat.id)) {
         await bot.deleteMessage(msg.chat.id, msg.message_id);
         await warnUser(msg.chat.id, msg.from.id, 'Использование запрещённых слов', bot.id);
         return;
     }
     
-    // Фильтр ссылок
-    if (settings.autoDeleteLinks && msg.text && containsLink(msg.text)) {
+    if (msg.text && settings.autoDeleteLinks && containsLink(msg.text)) {
         await bot.deleteMessage(msg.chat.id, msg.message_id);
         await bot.sendMessage(msg.chat.id, `🔗 ${msg.from.first_name}, ссылки запрещены!`);
         return;
     }
     
-    // Система уровней
-    if (settings.levelingEnabled) {
+    if (msg.text && isAllCaps(msg.text)) {
+        await bot.deleteMessage(msg.chat.id, msg.message_id);
+        await bot.sendMessage(msg.chat.id, `🔇 ${msg.from.first_name}, пожалуйста, не пишите капсом!`);
+        return;
+    }
+    
+    if (settings.levelingEnabled && msg.text) {
         await addXP(msg.from.id, Math.floor(Math.random() * 15) + 5);
     }
     
-    // Автоответы
     if (msg.text) {
-        await checkAutoResponse(msg.chat.id, msg.text);
+        const responses = autoResponses.get(msg.chat.id);
+        if (responses) {
+            const lowerText = msg.text.toLowerCase();
+            for (const [trigger, response] of responses.entries()) {
+                if (lowerText.includes(trigger)) {
+                    await bot.sendMessage(msg.chat.id, response);
+                    break;
+                }
+            }
+        }
     }
     
-    // Мут
     if (mutes.has(`${msg.chat.id}_${msg.from.id}`)) {
         try { await bot.deleteMessage(msg.chat.id, msg.message_id); } catch (err) {}
     }
 });
 
-// Респекты через + в ответе
 bot.on('message', async (msg) => {
     if (!msg.reply_to_message) return;
     if (msg.text === '+' || msg.text === '+1') {
@@ -1241,4 +1094,4 @@ bot.on('successful_payment', async (msg) => {
 
 // ========== ЗАПУСК ==========
 app.listen(PORT, () => console.log(`🌐 Сервер на порту ${PORT}`));
-console.log('🤖 Бот запущен!');
+console.log('🤖 Батяра Помощник запущен!');
