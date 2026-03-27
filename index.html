@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Seagull VPN</title>
+    <title>Seagull VPN • Мику</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
         }
 
         body {
@@ -19,8 +20,10 @@
             padding: 20px;
             position: relative;
             overflow-x: hidden;
+            padding-bottom: 120px;
         }
 
+        /* Звёзды */
         .star {
             position: absolute;
             background: white;
@@ -33,6 +36,7 @@
             50% { opacity: 1; transform: scale(1.2); }
         }
 
+        /* Чайки */
         .seagull {
             position: absolute;
             font-size: 28px;
@@ -91,35 +95,57 @@
             gap: 8px;
             flex: 1;
             justify-content: center;
+            cursor: pointer;
         }
 
-        .balance-item span:first-child {
-            font-size: 20px;
+        .balance-item span:first-child { font-size: 20px; }
+        .balance-item span:last-child { font-weight: 700; font-size: 18px; }
+
+        /* Ежедневный бонус */
+        .daily-bonus {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 153, 0, 0.2));
+            border-radius: 32px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 215, 0, 0.5);
         }
+        .daily-bonus:active { transform: scale(0.98); }
+        .daily-bonus h3 { color: #ffd700; margin-bottom: 8px; }
+        .daily-reward { font-size: 24px; font-weight: 800; margin: 8px 0; }
+        .daily-timer { font-size: 12px; color: rgba(255,255,255,0.6); }
 
-        .balance-item span:last-child {
-            font-weight: 700;
-            font-size: 18px;
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
         }
+        .nav-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 30px;
+            padding: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .nav-btn.active { background: linear-gradient(135deg, #ff99cc, #c084fc); }
 
-        .stars { color: #ffd700; }
-        .coins { color: #ffaa44; }
-
-        /* Колесо */
         .wheel-container {
             position: relative;
             margin: 20px 0;
             display: flex;
             justify-content: center;
         }
-
         canvas {
             width: 260px;
             height: 260px;
             border-radius: 50%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-
         .spin-btn {
             position: absolute;
             top: 50%;
@@ -137,18 +163,14 @@
             z-index: 10;
         }
 
-        .spin-btn:active {
-            transform: translate(-50%, -50%) scale(0.95);
-        }
-
-        /* Магазин */
-        .shop-items {
+        .shop-items, .inventory-items {
             display: flex;
             flex-direction: column;
             gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
         }
-
-        .shop-item {
+        .shop-item, .inventory-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -156,18 +178,7 @@
             border-radius: 24px;
             padding: 12px;
         }
-
-        .shop-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .shop-info span:first-child {
-            font-size: 24px;
-        }
-
-        .shop-buy {
+        .shop-buy, .use-btn {
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             border: none;
             border-radius: 30px;
@@ -176,39 +187,7 @@
             font-weight: 600;
             cursor: pointer;
         }
-
-        .shop-buy:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Инвентарь */
-        .inventory-items {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .inventory-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 10px 12px;
-        }
-
-        .use-btn {
-            background: #22c55e;
-            border: none;
-            border-radius: 20px;
-            padding: 6px 16px;
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-        }
+        .use-btn { background: #22c55e; }
 
         .active-proxy {
             background: rgba(34, 197, 94, 0.2);
@@ -217,68 +196,64 @@
             padding: 12px;
             margin-top: 12px;
         }
-
         .proxy-link {
             font-family: monospace;
             font-size: 10px;
             word-break: break-all;
-            margin: 8px 0;
         }
+        .timer { font-size: 14px; font-weight: 700; color: #ffd700; }
 
-        .timer {
-            font-size: 14px;
-            font-weight: 700;
-            color: #ffd700;
+        .hidden { display: none; }
+
+        /* Мику */
+        .miku-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            pointer-events: none;
         }
-
-        button {
-            background: linear-gradient(135deg, #ff99cc, #c084fc);
-            border: none;
-            border-radius: 30px;
-            padding: 10px;
-            color: white;
-            font-weight: 600;
+        .miku {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 90px;
+            filter: drop-shadow(0 0 15px #00ccff);
+            animation: mikuFloat 3s ease-in-out infinite;
+            pointer-events: auto;
             cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
+        }
+        @keyframes mikuFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+        .speech-bubble {
+            position: absolute;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: #00ccff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            white-space: nowrap;
+            animation: fadeOut 3s forwards;
+            pointer-events: none;
+            font-family: monospace;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
         }
 
-        .footer {
-            font-size: 10px;
-            color: rgba(255,255,255,0.4);
-            text-align: center;
-            margin-top: 16px;
-        }
-
-        .letter {
-            display: inline-block;
-            opacity: 0;
-            animation: fadeInLetter 0.05s forwards;
-        }
-
-        @keyframes fadeInLetter {
-            to { opacity: 1; }
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        .nav-btn {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            margin-top: 0;
-        }
-
-        .nav-btn.active {
-            background: linear-gradient(135deg, #ff99cc, #c084fc);
-        }
-
-        .hidden {
-            display: none;
-        }
+        .footer { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 16px; }
+        .letter { display: inline-block; opacity: 0; animation: fadeInLetter 0.05s forwards; }
+        @keyframes fadeInLetter { to { opacity: 1; } }
+        button { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -295,49 +270,41 @@
                 <div class="balance-item"><span>🪙</span><span id="coinsCount">0</span></div>
             </div>
 
+            <!-- Ежедневный бонус -->
+            <div class="daily-bonus" id="dailyBonus">
+                <h3>📅 ЕЖЕДНЕВНЫЙ БОНУС</h3>
+                <div class="daily-reward" id="dailyReward">+5 ⭐ | +20 🪙</div>
+                <div class="daily-timer" id="dailyTimer">Забрать сейчас!</div>
+            </div>
+
             <div class="nav-buttons">
                 <button class="nav-btn active" id="wheelTab">🎡 Колесо</button>
                 <button class="nav-btn" id="shopTab">🛒 Магазин</button>
                 <button class="nav-btn" id="inventoryTab">🎒 Инвентарь</button>
             </div>
 
-            <!-- Колесо -->
             <div id="wheelPanel">
                 <div class="wheel-container">
                     <canvas id="wheelCanvas" width="400" height="400"></canvas>
                     <button class="spin-btn" id="spinBtn">КРУТИТЬ<br>1⭐</button>
                 </div>
-                <div id="spinResult" class="active-proxy" style="display: none; margin-top: 16px;"></div>
+                <div id="spinResult" class="active-proxy" style="display: none;"></div>
             </div>
 
-            <!-- Магазин -->
             <div id="shopPanel" class="hidden">
                 <div class="shop-items">
-                    <div class="shop-item">
-                        <div class="shop-info"><span>⭐</span><span>5 звёзд</span></div>
-                        <button class="shop-buy" data-type="stars" data-cost="0" data-gain="5">Получить ежедневно</button>
-                    </div>
-                    <div class="shop-item">
-                        <div class="shop-info"><span>🪙</span><span>100 монет</span></div>
-                        <button class="shop-buy" data-type="coins" data-cost="0" data-gain="100">Забрать бонус</button>
-                    </div>
-                    <div class="shop-item">
-                        <div class="shop-info"><span>📦</span><span>Прокси на 5 дней</span></div>
-                        <button class="shop-buy" data-type="proxy_5" data-cost="50" data-gain="5">Купить за 50🪙</button>
-                    </div>
-                    <div class="shop-item">
-                        <div class="shop-info"><span>📦</span><span>Прокси на 9 дней</span></div>
-                        <button class="shop-buy" data-type="proxy_9" data-cost="80" data-gain="9">Купить за 80🪙</button>
-                    </div>
+                    <div class="shop-item"><div class="shop-info"><span>⭐</span><span>5 звёзд</span></div><button class="shop-buy" data-type="stars" data-gain="5">Ежедневно</button></div>
+                    <div class="shop-item"><div class="shop-info"><span>🪙</span><span>100 монет</span></div><button class="shop-buy" data-type="coins" data-gain="100">Ежедневно</button></div>
+                    <div class="shop-item"><div class="shop-info"><span>📦</span><span>Прокси на 5 дней</span></div><button class="shop-buy" data-type="proxy_5" data-cost="50" data-gain="5">Купить за 50🪙</button></div>
+                    <div class="shop-item"><div class="shop-info"><span>📦</span><span>Прокси на 9 дней</span></div><button class="shop-buy" data-type="proxy_9" data-cost="80" data-gain="9">Купить за 80🪙</button></div>
+                    <div class="shop-item"><div class="shop-info"><span>🎁</span><span>Случайный прокси</span></div><button class="shop-buy" data-type="random_proxy" data-cost="30" data-gain="random">Купить за 30🪙</button></div>
                 </div>
             </div>
 
-            <!-- Инвентарь -->
             <div id="inventoryPanel" class="hidden">
                 <div id="inventoryList" class="inventory-items"></div>
             </div>
 
-            <!-- Активный прокси -->
             <div id="activeProxyPanel" class="active-proxy" style="display: none;">
                 <div>🔌 АКТИВНЫЙ ПРОКСИ</div>
                 <div id="activeProxyLink" class="proxy-link"></div>
@@ -345,10 +312,13 @@
                 <button id="copyProxyBtn">📋 Копировать ссылку</button>
             </div>
 
-            <div class="footer">
-                Крути колесо за 1⭐ | Выигрывай монеты и прокси
-            </div>
+            <div class="footer">Крути колесо за 1⭐ | Ежедневный бонус 1 раз в день</div>
         </div>
+    </div>
+
+    <!-- Мику -->
+    <div class="miku-container">
+        <div class="miku" id="miku">🎤💙</div>
     </div>
 
     <script>
@@ -356,18 +326,16 @@
         tg.ready();
         tg.expand();
 
-        // ВАШ ПРОКСИ
         const PROXY_SERVER = "185.239.239.167";
         const PROXY_PORT = "443";
         const PROXY_SECRET = "eeaaf0d30441bab41f60acae779df0c";
         const PROXY_LINK = `https://t.me/proxy?server=${PROXY_SERVER}&port=${PROXY_PORT}&secret=${PROXY_SECRET}`;
 
-        // Данные пользователя
         let userData = {
-            stars: 0,
-            coins: 0,
-            inventory: [], // { type: "proxy_5" или "proxy_9", days: 5 или 9 }
-            activeProxy: null, // { expiresAt: timestamp }
+            stars: 3,
+            coins: 20,
+            inventory: [],
+            activeProxy: null,
             lastDaily: 0
         };
 
@@ -377,22 +345,18 @@
                 try {
                     const parsed = JSON.parse(saved);
                     userData = { ...userData, ...parsed };
-                    if (userData.activeProxy && userData.activeProxy.expiresAt < Date.now()) {
-                        userData.activeProxy = null;
-                    }
+                    if (userData.activeProxy && userData.activeProxy.expiresAt < Date.now()) userData.activeProxy = null;
                 } catch(e) {}
             }
             updateUI();
+            updateDailyButton();
         }
 
-        function saveData() {
-            localStorage.setItem('seagull_user', JSON.stringify(userData));
-        }
+        function saveData() { localStorage.setItem('seagull_user', JSON.stringify(userData)); }
 
         function updateUI() {
             document.getElementById('starsCount').innerText = userData.stars;
             document.getElementById('coinsCount').innerText = userData.coins;
-            
             if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
                 document.getElementById('activeProxyPanel').style.display = 'block';
                 document.getElementById('activeProxyLink').innerHTML = PROXY_LINK;
@@ -400,12 +364,8 @@
                 document.getElementById('activeTimer').innerHTML = `⏰ Осталось: ${remaining} ${getDayWord(remaining)}`;
             } else {
                 document.getElementById('activeProxyPanel').style.display = 'none';
-                if (userData.activeProxy) {
-                    userData.activeProxy = null;
-                    saveData();
-                }
+                if (userData.activeProxy) { userData.activeProxy = null; saveData(); }
             }
-            
             renderInventory();
         }
 
@@ -415,59 +375,86 @@
             return 'дней';
         }
 
-        function addStars(amount) {
-            userData.stars += amount;
-            saveData();
-            updateUI();
-        }
+        function addStars(amount) { userData.stars += amount; saveData(); updateUI(); mikuSpeak(`⭐ +${amount} звезд!`); }
+        function addCoins(amount) { userData.coins += amount; saveData(); updateUI(); mikuSpeak(`🪙 +${amount} монет!`); }
+        function showMessage(msg) { tg.showPopup({ title: "📢", message: msg, buttons: [{ type: "ok" }] }); }
 
-        function addCoins(amount) {
-            userData.coins += amount;
-            saveData();
-            updateUI();
+        function mikuSpeak(text) {
+            const bubble = document.createElement('div');
+            bubble.className = 'speech-bubble';
+            bubble.textContent = `💙 ${text} 💙`;
+            document.querySelector('.miku-container').appendChild(bubble);
+            setTimeout(() => bubble.remove(), 3000);
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addToInventory(type, days) {
             userData.inventory.push({ type, days, addedAt: Date.now() });
-            saveData();
-            updateUI();
+            saveData(); updateUI();
+            mikuSpeak(`🎁 Прокси на ${days} дней в инвентаре!`);
             showMessage(`🎁 Получен прокси на ${days} дней! Зайди в инвентарь чтобы активировать.`);
         }
 
         function useProxyFromInventory(index) {
             if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
                 showMessage("❌ У вас уже активен прокси! Дождитесь окончания.");
+                mikuSpeak("❌ Уже есть активный прокси!");
                 return;
             }
             const item = userData.inventory[index];
             if (!item) return;
-            
             const expiresAt = Date.now() + item.days * 24 * 60 * 60 * 1000;
             userData.activeProxy = { expiresAt };
             userData.inventory.splice(index, 1);
-            saveData();
-            updateUI();
+            saveData(); updateUI();
+            mikuSpeak(`✅ Прокси активирован на ${item.days} дней!`);
             showMessage(`✅ Прокси активирован на ${item.days} дней!`);
-            
             tg.openTelegramLink(PROXY_LINK);
         }
 
         function renderInventory() {
             const container = document.getElementById('inventoryList');
-            if (userData.inventory.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px;">🎒 Пусто</div>';
-                return;
-            }
+            if (userData.inventory.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px;">🎒 Пусто</div>'; return; }
             container.innerHTML = userData.inventory.map((item, i) => `
-                <div class="inventory-item">
-                    <div>📦 Прокси на ${item.days} дней</div>
-                    <button class="use-btn" onclick="useProxyFromInventory(${i})">Активировать</button>
-                </div>
+                <div class="inventory-item"><div>📦 Прокси на ${item.days} дней</div><button class="use-btn" onclick="useProxyFromInventory(${i})">Активировать</button></div>
             `).join('');
         }
 
-        function showMessage(msg) {
-            tg.showPopup({ title: "📢", message: msg, buttons: [{ type: "ok" }] });
+        // Ежедневный бонус
+        function updateDailyButton() {
+            const now = Date.now();
+            const last = userData.lastDaily || 0;
+            const diff = now - last;
+            const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - diff) / (1000 * 60 * 60));
+            const btn = document.getElementById('dailyBonus');
+            if (diff >= 24 * 60 * 60 * 1000) {
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                document.getElementById('dailyTimer').innerHTML = '🎁 ЗАБРАТЬ БОНУС!';
+                document.getElementById('dailyReward').innerHTML = '+5 ⭐ | +20 🪙';
+            } else {
+                btn.style.opacity = '0.7';
+                btn.style.cursor = 'not-allowed';
+                document.getElementById('dailyTimer').innerHTML = `⏰ Через ${hoursLeft} ч.`;
+            }
+        }
+
+        function claimDaily() {
+            const now = Date.now();
+            if (userData.lastDaily && (now - userData.lastDaily) < 24 * 60 * 60 * 1000) {
+                showMessage("⏰ Бонус уже получен! Приходи завтра.");
+                mikuSpeak("⏰ Бонус уже получен! Приходи завтра.");
+                return;
+            }
+            userData.lastDaily = now;
+            const isTuesday = new Date().getDay() === 2;
+            const starsGain = isTuesday ? 10 : 5;
+            const coinsGain = isTuesday ? 40 : 20;
+            addStars(starsGain);
+            addCoins(coinsGain);
+            if (isTuesday) mikuSpeak("🎉 Вторник! Двойной бонус! 🎉");
+            updateDailyButton();
+            showMessage(`✨ Получено ${starsGain} ⭐ и ${coinsGain} 🪙!`);
         }
 
         // Колесо
@@ -481,198 +468,151 @@
             { label: "📦5д", color: "#d946ef", type: "proxy", value: 5 },
             { label: "📦9д", color: "#f472b6", type: "proxy", value: 9 }
         ];
-        
-        let currentAngle = 0;
-        let spinning = false;
-        
+        let currentAngle = 0, spinning = false;
         function drawWheel() {
             const size = 400;
-            canvas.width = size;
-            canvas.height = size;
-            const center = size / 2;
-            const radius = size / 2 - 10;
-            const angleStep = (Math.PI * 2) / segments.length;
-            
-            for (let i = 0; i < segments.length; i++) {
-                const start = currentAngle + i * angleStep;
-                const end = start + angleStep;
-                ctx.beginPath();
-                ctx.moveTo(center, center);
-                ctx.arc(center, center, radius, start, end);
-                ctx.fillStyle = segments[i].color;
-                ctx.fill();
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.save();
-                ctx.translate(center, center);
-                ctx.rotate(start + angleStep / 2);
-                ctx.fillStyle = "white";
-                ctx.font = "bold 18px 'Segoe UI'";
-                ctx.shadowBlur = 0;
-                ctx.fillText(segments[i].label, radius - 35, 10);
+            canvas.width = size; canvas.height = size;
+            const center = size/2, radius = size/2 - 10;
+            const angleStep = (Math.PI*2)/segments.length;
+            for(let i=0;i<segments.length;i++){
+                const start = currentAngle + i*angleStep, end = start+angleStep;
+                ctx.beginPath(); ctx.moveTo(center,center); ctx.arc(center,center,radius,start,end);
+                ctx.fillStyle = segments[i].color; ctx.fill();
+                ctx.strokeStyle = "white"; ctx.lineWidth=2; ctx.stroke();
+                ctx.save(); ctx.translate(center,center); ctx.rotate(start+angleStep/2);
+                ctx.fillStyle="white"; ctx.font="bold 18px 'Segoe UI'"; ctx.fillText(segments[i].label, radius-35,10);
                 ctx.restore();
             }
-            ctx.beginPath();
-            ctx.moveTo(center - 15, 15);
-            ctx.lineTo(center, 0);
-            ctx.lineTo(center + 15, 15);
-            ctx.fillStyle = "white";
-            ctx.fill();
+            ctx.beginPath(); ctx.moveTo(center-15,15); ctx.lineTo(center,0); ctx.lineTo(center+15,15); ctx.fillStyle="white"; ctx.fill();
         }
-        
         function spinWheel() {
-            if (spinning) return;
-            if (userData.stars < 1) {
-                showMessage("❌ Недостаточно звёзд! Получите ежедневный бонус в магазине.");
-                return;
-            }
-            userData.stars--;
-            saveData();
-            updateUI();
-            
-            spinning = true;
-            const spinAngle = 360 * 6 + Math.random() * 360;
-            const targetAngle = currentAngle + (spinAngle * Math.PI / 180);
-            const duration = 2000;
-            const startTime = performance.now();
-            const startAngle = currentAngle;
-            
-            function animateSpin(now) {
-                const elapsed = now - startTime;
-                const progress = Math.min(1, elapsed / duration);
-                const ease = 1 - Math.pow(1 - progress, 3);
-                currentAngle = startAngle + (targetAngle - startAngle) * ease;
+            if(spinning) return;
+            if(userData.stars<1){ showMessage("❌ Недостаточно звёзд!"); mikuSpeak("⭐ Нужна 1 звезда!"); return; }
+            userData.stars--; saveData(); updateUI();
+            spinning=true;
+            const spinAngle = 360*6+Math.random()*360;
+            const targetAngle = currentAngle + (spinAngle*Math.PI/180);
+            const duration=2000, startTime=performance.now(), startAngle=currentAngle;
+            function animateSpin(now){
+                const elapsed=now-startTime, progress=Math.min(1,elapsed/duration);
+                const ease=1-Math.pow(1-progress,3);
+                currentAngle = startAngle+(targetAngle-startAngle)*ease;
                 drawWheel();
-                if (progress < 1) {
-                    requestAnimationFrame(animateSpin);
-                } else {
-                    currentAngle = targetAngle % (Math.PI * 2);
+                if(progress<1) requestAnimationFrame(animateSpin);
+                else{
+                    currentAngle = targetAngle%(Math.PI*2);
                     drawWheel();
-                    const angleStep = (Math.PI * 2) / segments.length;
-                    const pointerAngle = (Math.PI * 2 - (currentAngle % (Math.PI * 2))) % (Math.PI * 2);
-                    const index = Math.floor(pointerAngle / angleStep) % segments.length;
+                    const angleStep = (Math.PI*2)/segments.length;
+                    const pointerAngle = (Math.PI*2-(currentAngle%(Math.PI*2)))%(Math.PI*2);
+                    const index = Math.floor(pointerAngle/angleStep)%segments.length;
                     const prize = segments[index];
-                    
-                    if (prize.type === "coins") {
-                        addCoins(prize.value);
-                        showMessage(`🎉 Вы выиграли ${prize.value} 🪙!`);
-                    } else if (prize.type === "stars") {
-                        addStars(prize.value);
-                        showMessage(`🎉 Вы выиграли ${prize.value} ⭐!`);
-                    } else if (prize.type === "proxy") {
-                        addToInventory(`proxy_${prize.value}`, prize.value);
-                    }
-                    
+                    if(prize.type==="coins") addCoins(prize.value);
+                    else if(prize.type==="stars") addStars(prize.value);
+                    else if(prize.type==="proxy") addToInventory(`proxy_${prize.value}`, prize.value);
+                    mikuSpeak(`🎲 Выигрыш: ${prize.label}!`);
                     document.getElementById('spinResult').innerHTML = `<div>🎉 ВЫИГРЫШ: ${prize.label} 🎉</div>`;
-                    document.getElementById('spinResult').style.display = 'block';
-                    setTimeout(() => {
-                        document.getElementById('spinResult').style.display = 'none';
-                    }, 3000);
-                    
-                    spinning = false;
+                    document.getElementById('spinResult').style.display='block';
+                    setTimeout(()=>document.getElementById('spinResult').style.display='none',3000);
+                    spinning=false;
                 }
             }
             requestAnimationFrame(animateSpin);
         }
-        
+
         // Магазин
         function initShop() {
             document.querySelectorAll('.shop-buy').forEach(btn => {
                 btn.onclick = () => {
                     const type = btn.dataset.type;
-                    const cost = parseInt(btn.dataset.cost);
+                    const cost = parseInt(btn.dataset.cost) || 0;
                     const gain = parseInt(btn.dataset.gain);
-                    
-                    if (type === "stars") {
-                        const now = Date.now();
-                        if (now - userData.lastDaily < 24 * 60 * 60 * 1000) {
-                            showMessage("⏰ Ежедневный бонус уже получен! Приходи завтра.");
-                            return;
+                    if(type==="stars"){
+                        if(userData.lastDaily && (Date.now()-userData.lastDaily)<24*60*60*1000){
+                            showMessage("⏰ Бонус уже получен!"); return;
                         }
-                        userData.lastDaily = now;
+                        userData.lastDaily=Date.now();
                         addStars(gain);
+                        updateDailyButton();
                         showMessage(`✨ Получено ${gain} звёзд!`);
-                    } else if (type === "coins") {
-                        addCoins(gain);
-                        showMessage(`🪙 Получено ${gain} монет!`);
-                    } else if (type === "proxy_5" || type === "proxy_9") {
-                        if (userData.coins < cost) {
-                            showMessage(`❌ Недостаточно монет! Нужно ${cost} 🪙`);
-                            return;
+                    } else if(type==="coins"){
+                        if(userData.lastDaily && (Date.now()-userData.lastDaily)<24*60*60*1000){
+                            showMessage("⏰ Бонус уже получен!"); return;
                         }
+                        userData.lastDaily=Date.now();
+                        addCoins(gain);
+                        updateDailyButton();
+                        showMessage(`🪙 Получено ${gain} монет!`);
+                    } else if(type==="proxy_5" || type==="proxy_9"){
+                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); mikuSpeak(`❌ Не хватает монет!`); return; }
                         userData.coins -= cost;
                         addToInventory(type, gain);
-                        saveData();
-                        updateUI();
-                        showMessage(`✅ Куплен прокси на ${gain} дней! Забери в инвентаре.`);
+                        saveData(); updateUI();
+                    } else if(type==="random_proxy"){
+                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); return; }
+                        userData.coins -= cost;
+                        const days = Math.random()<0.3 ? 9 : 5;
+                        addToInventory(`proxy_${days}`, days);
+                        saveData(); updateUI();
                     }
                 };
             });
         }
-        
+
         // Навигация
         document.getElementById('wheelTab').onclick = () => {
             document.getElementById('wheelPanel').classList.remove('hidden');
             document.getElementById('shopPanel').classList.add('hidden');
             document.getElementById('inventoryPanel').classList.add('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
             document.getElementById('wheelTab').classList.add('active');
-            document.getElementById('shopTab').classList.remove('active');
-            document.getElementById('inventoryTab').classList.remove('active');
         };
         document.getElementById('shopTab').onclick = () => {
             document.getElementById('wheelPanel').classList.add('hidden');
             document.getElementById('shopPanel').classList.remove('hidden');
             document.getElementById('inventoryPanel').classList.add('hidden');
-            document.getElementById('wheelTab').classList.remove('active');
+            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
             document.getElementById('shopTab').classList.add('active');
-            document.getElementById('inventoryTab').classList.remove('active');
         };
         document.getElementById('inventoryTab').onclick = () => {
             document.getElementById('wheelPanel').classList.add('hidden');
             document.getElementById('shopPanel').classList.add('hidden');
             document.getElementById('inventoryPanel').classList.remove('hidden');
-            document.getElementById('wheelTab').classList.remove('active');
-            document.getElementById('shopTab').classList.remove('active');
+            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
             document.getElementById('inventoryTab').classList.add('active');
             renderInventory();
         };
-        
-        document.getElementById('copyProxyBtn').onclick = () => {
-            tg.openTelegramLink(PROXY_LINK);
-        };
-        
+        document.getElementById('copyProxyBtn').onclick = () => tg.openTelegramLink(PROXY_LINK);
         document.getElementById('spinBtn').onclick = spinWheel;
-        
-        // Звёзды фона
-        for (let i = 0; i < 80; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            star.style.left = Math.random() * 100 + '%';
-            star.style.top = Math.random() * 100 + '%';
-            star.style.width = Math.random() * 3 + 1 + 'px';
-            star.style.height = star.style.width;
-            star.style.animationDelay = Math.random() * 3 + 's';
+        document.getElementById('dailyBonus').onclick = claimDaily;
+
+        // Звёзды
+        for(let i=0;i<80;i++){
+            const star=document.createElement('div');
+            star.className='star';
+            star.style.left=Math.random()*100+'%';
+            star.style.top=Math.random()*100+'%';
+            star.style.width=Math.random()*3+1+'px';
+            star.style.height=star.style.width;
+            star.style.animationDelay=Math.random()*3+'s';
             document.getElementById('stars').appendChild(star);
         }
-        
-        function animateText(element, text, delay = 0.04) {
-            element.innerHTML = '';
-            text.split('').forEach((l, i) => {
-                const span = document.createElement('span');
-                span.className = 'letter';
-                span.textContent = l;
-                span.style.animationDelay = `${i * delay}s`;
+
+        function animateText(element, text, delay=0.04){
+            element.innerHTML='';
+            text.split('').forEach((l,i)=>{
+                const span=document.createElement('span');
+                span.className='letter';
+                span.textContent=l;
+                span.style.animationDelay=`${i*delay}s`;
                 element.appendChild(span);
             });
         }
-        
         animateText(document.getElementById('title'), '🎡 Seagull VPN', 0.04);
-        
+
         drawWheel();
         loadData();
         initShop();
-        
+        mikuSpeak("Привет! Я Мику! Крути колесо за звёзды!");
         window.useProxyFromInventory = useProxyFromInventory;
     </script>
 </body>
