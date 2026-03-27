@@ -79,32 +79,39 @@
             }
         }
 
-        /* Аниме-персонажи */
-        .character {
+        /* Аниме-персонажи (реальные) */
+        .anime-char {
             position: absolute;
-            font-size: 45px;
+            font-size: 42px;
             pointer-events: none;
             z-index: 10;
             animation: float 4s ease-in-out infinite;
             filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+            text-shadow: 0 0 5px rgba(255,255,255,0.5);
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(5deg); }
+            50% { transform: translateY(-15px) rotate(3deg); }
         }
 
-        .chika { bottom: 15px; left: 5px; animation-duration: 3s; }
-        .nezuko { bottom: 50px; right: 5px; animation-duration: 4s; }
-        .totoro { top: 70px; left: 5px; font-size: 55px; animation-duration: 5s; }
-        .zenitsu { top: 45px; right: 5px; animation-duration: 3.5s; }
-        .pikachu { bottom: 90px; left: 45%; transform: translateX(-50%); animation-duration: 4.5s; }
-        .jellyfish { top: 30%; right: 15%; font-size: 35px; animation-duration: 6s; animation: float 5s ease-in-out infinite; }
-        .butterfly { top: 20%; left: 10%; font-size: 32px; animation-duration: 7s; }
+        /* Позиции персонажей */
+        .nezuko { bottom: 15px; left: 5px; animation-duration: 3.5s; }
+        .tanjiro { bottom: 60px; right: 8px; animation-duration: 4s; }
+        .zenitsu { top: 65px; left: 8px; animation-duration: 4.2s; }
+        .inosuke { top: 45px; right: 10px; animation-duration: 3.8s; }
+        .chika { bottom: 95px; left: 45%; transform: translateX(-50%); animation-duration: 4.5s; }
+        .kaguya { top: 20%; right: 12%; animation-duration: 5s; }
+        .naruto { bottom: 120px; right: 20%; animation-duration: 4.2s; }
+        .sasuke { top: 75%; left: 12%; animation-duration: 4.7s; }
+        .luffy { bottom: 30%; right: 5%; animation-duration: 5.2s; }
+        .goku { top: 12%; left: 8%; animation-duration: 4.9s; }
 
         @media (max-width: 600px) {
-            .character { font-size: 35px; }
-            .totoro { font-size: 45px; top: 60px; }
+            .anime-char { font-size: 35px; }
+            .nezuko { bottom: 10px; left: 2px; }
+            .tanjiro { bottom: 45px; right: 2px; }
+            .zenitsu { top: 55px; left: 2px; }
         }
 
         .container {
@@ -230,7 +237,6 @@
             transform: scale(0.97);
         }
 
-        /* Спонсор */
         .sponsor-card {
             margin-top: 20px;
             padding: 14px;
@@ -312,14 +318,17 @@
     <div class="fish" style="top: 85%; animation-duration: 11s; animation-delay: 3s;">🐠</div>
     <div class="fish" style="top: 60%; animation-duration: 7s; animation-delay: 0s;">🐡</div>
 
-    <!-- Аниме-персонажи -->
-    <div class="character chika">💖</div>
-    <div class="character nezuko">🌸</div>
-    <div class="character totoro">🍃</div>
-    <div class="character zenitsu">⚡</div>
-    <div class="character pikachu">⚡</div>
-    <div class="character jellyfish">🪼</div>
-    <div class="character butterfly">🦋</div>
+    <!-- РЕАЛЬНЫЕ АНИМЕ-ПЕРСОНАЖИ (люди) -->
+    <div class="anime-char nezuko">👧🏻🌸</div>
+    <div class="anime-char tanjiro">👦🏻🗡️</div>
+    <div class="anime-char zenitsu">👦🏻⚡</div>
+    <div class="anime-char inosuke">👦🏻🐗</div>
+    <div class="anime-char chika">👧🏻💖</div>
+    <div class="anime-char kaguya">👩🏻🎴</div>
+    <div class="anime-char naruto">🧡🍥</div>
+    <div class="anime-char sasuke">💜🗡️</div>
+    <div class="anime-char luffy">🏴‍☠️👒</div>
+    <div class="anime-char goku">🧡🐉</div>
 
     <div class="container">
         <div class="card">
@@ -378,7 +387,6 @@
         tg.ready();
         tg.expand();
 
-        // Прокси
         const PROXY = {
             server: "185.239.239.167",
             port: "443",
@@ -386,17 +394,17 @@
         };
         const PROXY_LINK = `https://t.me/proxy?server=${PROXY.server}&port=${PROXY.port}&secret=${PROXY.secret}`;
 
-        // Аниме-цитаты
         const quotes = [
             { text: "「 君の名は... 」", author: "— 君の名は。" },
             { text: "「 大丈夫、きっと会える 」", author: "— 天気の子" },
             { text: "「 僕は君に会いに行く 」", author: "— 秒速5センチメートル" },
             { text: "「 心が叫びたがってる 」", author: "— ヴァイオレット・エヴァーガーデン" },
-            { text: "「 一緒に飛ぼう 」", author: "— リズと青い鳥" }
+            { text: "「 一緒に飛ぼう 」", author: "— リズと青い鳥" },
+            { text: "「 俺はなる！ 」", author: "— NARUTO" },
+            { text: "「 友達になるんだ 」", author: "— ONE PIECE" }
         ];
         let currentQuoteIndex = 0;
 
-        // Анимация букв
         function animateText(element, text, delay = 0.04) {
             element.innerHTML = '';
             text.split('').forEach((letter, i) => {
@@ -408,7 +416,6 @@
             });
         }
 
-        // Смена цитаты
         function changeQuote() {
             const quoteBox = document.getElementById('quoteBox');
             const quoteText = document.getElementById('quoteText');
@@ -422,7 +429,6 @@
             }, 300);
         }
 
-        // Подключение
         function connectProxy() {
             const btn = document.getElementById('openBtn');
             const originalText = btn.innerHTML;
@@ -443,12 +449,10 @@
             }, 500);
         }
 
-        // Спонсор
         function openSponsor() {
             tg.openTelegramLink("https://t.me/seagull_proxy");
         }
 
-        // Звёзды
         for (let i = 0; i < 100; i++) {
             const star = document.createElement('div');
             star.className = 'star';
@@ -461,7 +465,6 @@
             document.getElementById('stars').appendChild(star);
         }
 
-        // Запуск
         animateText(document.getElementById('title'), 'Seagull VPN', 0.045);
         setTimeout(() => {
             animateText(document.getElementById('subText'), 'Обход блокировок Telegram', 0.03);
