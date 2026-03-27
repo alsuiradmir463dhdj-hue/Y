@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>VPN • Канал</title>
+    <title>Seagull VPN</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
         body {
             background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 100%);
-            font-family: system-ui, sans-serif;
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -21,7 +21,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 360px;
+            max-width: 380px;
             width: 100%;
         }
         .card {
@@ -32,73 +32,203 @@
             text-align: center;
             border: 1px solid rgba(255,180,200,0.4);
         }
-        .channel-icon {
-            font-size: 60px;
-            margin-bottom: 20px;
+        .logo {
+            font-size: 64px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
         h1 {
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 800;
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
-        .sub-btn {
-            background: linear-gradient(135deg, #ff99cc, #c084fc);
-            border: none;
-            border-radius: 40px;
-            padding: 14px;
-            color: white;
-            font-weight: bold;
-            width: 100%;
-            margin: 10px 0;
-            cursor: pointer;
+        .sub {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            margin-bottom: 24px;
         }
-        .connect-btn {
-            background: #22c55e;
-            border: none;
-            border-radius: 40px;
-            padding: 14px;
-            color: white;
-            font-weight: bold;
-            width: 100%;
-            margin: 10px 0;
-            cursor: pointer;
+        .proxy-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 32px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
         }
-        .connect-btn.disabled {
-            background: #555;
-            cursor: not-allowed;
+        .proxy-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .proxy-row:last-child {
+            border-bottom: none;
+        }
+        .proxy-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+        }
+        .proxy-value {
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ccff;
+            word-break: break-all;
+            text-align: right;
+            max-width: 60%;
         }
         .status {
-            font-size: 12px;
-            color: #ffd700;
-            margin-top: 16px;
+            background: rgba(34,197,94,0.2);
+            border-radius: 30px;
+            padding: 8px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #22c55e;
         }
-        .note {
-            font-size: 10px;
-            color: rgba(255,255,255,0.4);
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        .connect-btn {
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+            border: none;
+            border-radius: 60px;
+            padding: 16px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            margin: 16px 0;
+            transition: all 0.3s;
+        }
+        .connect-btn:active {
+            transform: scale(0.97);
+        }
+        .channel-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 28px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-top: 16px;
+            cursor: pointer;
+        }
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .channel-avatar {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .channel-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .channel-members {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+        }
+        .join-btn {
+            background: transparent;
+            border: 1px solid #ff99cc;
+            border-radius: 30px;
+            padding: 8px 16px;
+            color: #ff99cc;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .footer {
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            margin-top: 20px;
+        }
+        .quote {
+            margin-top: 16px;
+            font-size: 11px;
+            font-style: italic;
+            color: #ffb7c5;
+            min-height: 40px;
+        }
+        .typing {
+            display: inline-block;
+            font-family: monospace;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <div class="channel-icon">📢</div>
-            <h1>VPN PROXY</h1>
-            
-            <div id="subPanel">
-                <button class="sub-btn" id="subBtn">⭐ ПОДПИСАТЬСЯ НА КАНАЛ</button>
-                <div class="note">Подпишись, чтобы получить доступ к прокси</div>
+            <div class="logo">🕊️✨</div>
+            <h1 id="title">Seagull VPN</h1>
+            <div class="sub" id="subText">Обход блокировок Telegram</div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                <span id="statusText">Сервер активен</span>
             </div>
 
-            <div id="proxyPanel" style="display: none;">
-                <button class="connect-btn" id="connectBtn">🔌 ПОДКЛЮЧИТЬ ПРОКСИ</button>
-                <div class="status" id="statusText">✅ Подписка подтверждена!</div>
+            <div class="proxy-card">
+                <div class="proxy-row">
+                    <span class="proxy-label">🌐 Сервер</span>
+                    <span class="proxy-value" id="serverDisplay">146.70.198.44</span>
+                </div>
+                <div class="proxy-row">
+                    <span class="proxy-label">🔌 Порт</span>
+                    <span class="proxy-value">443</span>
+                </div>
+                <div class="proxy-row">
+                    <span class="proxy-label">🔐 Протокол</span>
+                    <span class="proxy-value">MTProto 2.0</span>
+                </div>
             </div>
 
-            <div class="note">
-                Канал будет вверху после подписки
+            <button class="connect-btn" id="connectBtn">
+                🔌 ПОДКЛЮЧИТЬ
+            </button>
+
+            <div class="channel-card" id="channelCard">
+                <div class="channel-info">
+                    <div class="channel-avatar">📢</div>
+                    <div>
+                        <div class="channel-name">Seagull Proxy</div>
+                        <div class="channel-members">Актуальные прокси</div>
+                    </div>
+                </div>
+                <button class="join-btn" id="joinBtn">Подписаться</button>
+            </div>
+
+            <div class="quote" id="quote">「 繋がりたい、ただそれだけ 」</div>
+
+            <div class="footer">
+                Нажми «Подключить» → подтверди → Telegram без блокировок
             </div>
         </div>
     </div>
@@ -108,63 +238,132 @@
         tg.ready();
         tg.expand();
 
-        // ТВОЙ КАНАЛ
-        const CHANNEL_LINK = "https://t.me/ваш_канал";
+        // ========== ТВОЙ ПРОКСИ (рабочий) ==========
+        const PROXY = {
+            server: "146.70.198.44",
+            port: "443",
+            secret: "48a02e73febda5eaa96acf31e176f673"
+        };
         
-        // ТВОЙ ПРОКСИ
-        const PROXY_LINK = "https://t.me/proxy?server=185.239.239.167&port=443&secret=eeaaf0d30441bab41f60acae779df0c";
+        // ========== ТВОЙ КАНАЛ ==========
+        const CHANNEL_LINK = "https://t.me/seagull_proxy";
+        
+        const PROXY_LINK = `https://t.me/proxy?server=${PROXY.server}&port=${PROXY.port}&secret=${PROXY.secret}`;
 
-        let isSubscribed = false;
-
-        function checkSubscription() {
-            // Проверяем, подписался ли пользователь
-            const saved = localStorage.getItem('subscribed_to_channel');
-            if (saved === 'true') {
-                isSubscribed = true;
-                document.getElementById('subPanel').style.display = 'none';
-                document.getElementById('proxyPanel').style.display = 'block';
-            }
-        }
-
-        function subscribe() {
-            tg.openTelegramLink(CHANNEL_LINK);
-            tg.showPopup({
-                title: "📢 Подпишись",
-                message: "После подписки нажми 'Проверить'",
-                buttons: [
-                    { id: "check", type: "ok", text: "✅ ПРОВЕРИТЬ" }
-                ]
-            }, (buttonId) => {
-                if (buttonId === "check") {
-                    localStorage.setItem('subscribed_to_channel', 'true');
-                    isSubscribed = true;
-                    document.getElementById('subPanel').style.display = 'none';
-                    document.getElementById('proxyPanel').style.display = 'block';
-                    tg.showPopup({
-                        title: "✅ Готово!",
-                        message: "Теперь ты можешь подключить прокси!",
-                        buttons: [{ type: "ok", text: "Ок" }]
-                    });
+        // Японские цитаты
+        const quotes = [
+            "「 君の名は... 」",
+            "「 大丈夫、きっと会える 」",
+            "「 僕は君に会いに行く 」",
+            "「 心が叫びたがってる 」",
+            "「 一緒に飛ぼう 」",
+            "「 繋がりたい、ただそれだけ 」",
+            "「 風が吹いたら、会いに行く 」",
+            "「 君のことが好きだ 」",
+            "「 もう一度、会いたい 」",
+            "「 待ってるよ 」"
+        ];
+        
+        let quoteIndex = 0;
+        let typingInterval = null;
+        let typingText = "";
+        
+        // Анимация печати
+        function animateTyping(text, element) {
+            if (typingInterval) clearInterval(typingInterval);
+            element.innerHTML = '';
+            let i = 0;
+            typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    element.innerHTML += text[i];
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                    typingInterval = null;
                 }
+            }, 100);
+        }
+        
+        // Смена цитаты каждую секунду
+        function changeQuote() {
+            const quoteElement = document.getElementById('quote');
+            quoteIndex = (quoteIndex + 1) % quotes.length;
+            animateTyping(quotes[quoteIndex], quoteElement);
+        }
+        
+        // Подключение прокси
+        function connectProxy() {
+            tg.openTelegramLink(PROXY_LINK);
+            document.getElementById('statusText').innerHTML = 'Подключение...';
+            setTimeout(() => {
+                document.getElementById('statusText').innerHTML = 'Подключено!';
+                setTimeout(() => {
+                    document.getElementById('statusText').innerHTML = 'Сервер активен';
+                }, 3000);
+            }, 1500);
+            
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        }
+        
+        // Подписка на канал
+        function joinChannel() {
+            tg.openTelegramLink(CHANNEL_LINK);
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        }
+        
+        // Анимация появления букв в заголовке
+        function animateText(element, text, delay = 0.05) {
+            element.innerHTML = '';
+            text.split('').forEach((letter, i) => {
+                const span = document.createElement('span');
+                span.className = 'typing';
+                span.textContent = letter;
+                span.style.animation = `fadeInLetter 0.05s forwards`;
+                span.style.opacity = '0';
+                span.style.display = 'inline-block';
+                element.appendChild(span);
+                setTimeout(() => {
+                    span.style.opacity = '1';
+                }, i * delay * 1000);
             });
         }
-
-        function connectProxy() {
-            if (!isSubscribed) {
-                tg.showPopup({
-                    title: "❌",
-                    message: "Сначала подпишись на канал!",
-                    buttons: [{ type: "ok", text: "Ок" }]
-                });
-                return;
+        
+        // Добавляем анимацию появления
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInLetter {
+                to { opacity: 1; transform: translateY(0); }
             }
-            tg.openTelegramLink(PROXY_LINK);
-        }
-
-        document.getElementById('subBtn').addEventListener('click', subscribe);
+            .typing {
+                opacity: 0;
+                transform: translateY(5px);
+                transition: all 0.1s;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Запуск анимаций
+        animateText(document.getElementById('title'), 'Seagull VPN', 0.06);
+        setTimeout(() => {
+            animateText(document.getElementById('subText'), 'Обход блокировок Telegram', 0.04);
+        }, 500);
+        
+        // Смена цитаты каждые 3 секунды
+        setInterval(changeQuote, 3000);
+        
+        // Обработчики
         document.getElementById('connectBtn').addEventListener('click', connectProxy);
-
-        checkSubscription();
+        document.getElementById('joinBtn').addEventListener('click', joinChannel);
+        document.getElementById('channelCard').addEventListener('click', joinChannel);
+        
+        // Приветствие
+        setTimeout(() => {
+            tg.showPopup({
+                title: "🕊️ Seagull VPN",
+                message: "Нажми «Подключить» → подтверди в Telegram → блокировка обойдена!",
+                buttons: [{ type: "ok", text: "Понятно" }]
+            });
+        }, 1000);
     </script>
 </body>
 </html>
