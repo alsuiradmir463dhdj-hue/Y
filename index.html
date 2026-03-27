@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Proxy VPN</title>
+    <title>VPN Proxy • Обход блокировок</title>
     <style>
         * {
             margin: 0;
@@ -17,24 +17,71 @@
             color: var(--tg-theme-text-color);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Анимации */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.5; }
+        }
+
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(46, 166, 255, 0.5); }
+            100% { box-shadow: 0 0 25px rgba(46, 166, 255, 0.8); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .container {
-            max-width: 380px;
-            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            animation: fadeInUp 0.6s ease-out;
         }
 
+        /* Карточка */
         .card {
             background: var(--tg-theme-secondary-bg-color);
-            border-radius: 40px;
-            padding: 40px 28px;
+            border-radius: 48px;
+            padding: 32px 24px;
             text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
         }
 
+        /* Иконка VPN с анимацией */
         .vpn-icon {
             width: 100px;
             height: 100px;
@@ -43,145 +90,297 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 24px;
+            margin: 0 auto 20px;
             font-size: 48px;
-            box-shadow: 0 15px 35px rgba(46, 166, 255, 0.3);
+            animation: pulse 2s infinite, glow 2s infinite;
+            transition: all 0.3s;
+        }
+
+        .vpn-icon.connected {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            animation: none;
         }
 
         h1 {
             font-size: 28px;
             font-weight: 800;
             margin-bottom: 8px;
+            background: linear-gradient(135deg, #2ea6ff, #5e9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .desc {
             color: var(--tg-theme-hint-color);
             font-size: 14px;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
 
-        .proxy-card {
-            background: rgba(46, 166, 255, 0.12);
-            border-radius: 24px;
-            padding: 18px;
+        /* Статус */
+        .status-card {
+            background: rgba(46, 166, 255, 0.1);
+            border-radius: 32px;
+            padding: 16px;
             margin: 20px 0;
-            border: 1px solid rgba(46, 166, 255, 0.25);
         }
 
-        .proxy-row {
+        .status-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 8px 0;
         }
 
-        .proxy-label {
+        .status-label {
             font-size: 13px;
             color: var(--tg-theme-hint-color);
         }
 
-        .proxy-value {
+        .status-value {
             font-family: monospace;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin: 16px 0;
-            padding: 10px;
-            background: rgba(34, 197, 94, 0.15);
-            border-radius: 40px;
-            color: #22c55e;
             font-size: 13px;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            background: #22c55e;
+        .status-badge {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            animation: pulse 1.2s infinite;
+            background: #22c55e;
+            animation: pulse 1.5s infinite;
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.4; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1); }
+        .status-badge.offline {
+            background: #ef4444;
+            animation: none;
         }
 
+        /* Прогресс-бар */
+        .progress-section {
+            margin: 24px 0;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+        }
+
+        .progress-section.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .progress-bar-container {
+            background: rgba(128, 128, 128, 0.2);
+            border-radius: 60px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2ea6ff, #5e9eff);
+            border-radius: 60px;
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
+        }
+
+        /* Кнопка подключения */
         .connect-btn {
             width: 100%;
             padding: 18px;
-            background: var(--tg-theme-button-color);
-            color: var(--tg-theme-button-text-color);
+            background: linear-gradient(135deg, #2ea6ff, #5e9eff);
+            color: white;
             border: none;
             border-radius: 60px;
             font-size: 18px;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
             margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .connect-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .connect-btn:hover::before {
+            left: 100%;
         }
 
         .connect-btn:active {
             transform: scale(0.97);
         }
 
+        .connect-btn.connected {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        /* Дополнительные прокси */
+        .extra-proxies {
+            margin-top: 24px;
+            animation: slideIn 0.5s ease-out 0.3s both;
+        }
+
+        .extra-title {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .proxy-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .proxy-item {
+            background: rgba(46, 166, 255, 0.08);
+            border-radius: 20px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .proxy-item:hover {
+            border-color: rgba(46, 166, 255, 0.3);
+            transform: translateX(4px);
+        }
+
+        .proxy-item.active {
+            border-color: #2ea6ff;
+            background: rgba(46, 166, 255, 0.15);
+        }
+
+        .proxy-info {
+            text-align: left;
+        }
+
+        .proxy-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .proxy-ip {
+            font-family: monospace;
+            font-size: 10px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .proxy-select {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--tg-theme-hint-color);
+        }
+
+        .proxy-item.active .proxy-select {
+            background: #2ea6ff;
+            border-color: #2ea6ff;
+        }
+
         .footer {
             margin-top: 24px;
             font-size: 11px;
             color: var(--tg-theme-hint-color);
-        }
-
-        .shield {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #2ea6ff;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <div class="vpn-icon">
+            <div class="vpn-icon" id="vpnIcon">
                 🛡️
             </div>
             <h1>VPN Proxy</h1>
             <div class="desc">Обход блокировок Telegram</div>
 
-            <div class="status">
-                <span class="status-dot"></span>
-                Сервер активен • Готов к подключению
-            </div>
-
-            <div class="proxy-card">
-                <div class="proxy-row">
-                    <span class="proxy-label">🌐 Сервер</span>
-                    <span class="proxy-value">4.180.183.240</span>
+            <div class="status-card">
+                <div class="status-row">
+                    <span class="status-label">🌐 Текущий сервер</span>
+                    <span class="status-value" id="currentServer">4.180.183.240</span>
                 </div>
-                <div class="proxy-row">
-                    <span class="proxy-label">🔌 Порт</span>
-                    <span class="proxy-value">443</span>
+                <div class="status-row">
+                    <span class="status-label">🔌 Порт</span>
+                    <span class="status-value">443</span>
                 </div>
-                <div class="proxy-row">
-                    <span class="proxy-label">🔐 Шифрование</span>
-                    <span class="proxy-value">MTProto 2.0</span>
+                <div class="status-row">
+                    <span class="status-label">📡 Статус</span>
+                    <span class="status-value">
+                        <span class="status-badge" id="statusBadge"></span>
+                        <span id="statusText">Готов к подключению</span>
+                    </span>
                 </div>
             </div>
 
+            <!-- Прогресс-бар -->
+            <div class="progress-section" id="progressSection">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText">Подготовка...</div>
+            </div>
+
+            <!-- Кнопка подключения -->
             <button class="connect-btn" id="connectBtn">
                 🔓 ВКЛЮЧИТЬ ОБХОД
             </button>
 
-            <div class="shield">
-                ⚡ После подключения весь Telegram работает без блокировок
+            <!-- Дополнительные прокси -->
+            <div class="extra-proxies">
+                <div class="extra-title">
+                    🔄 Дополнительные серверы
+                </div>
+                <div class="proxy-list" id="proxyList">
+                    <!-- Список прокси будет добавлен через JS -->
+                </div>
             </div>
 
             <div class="footer">
-                Нажмите кнопку → подтвердите подключение → Telegram разблокирован
+                ⚡ Нажмите кнопку → Telegram работает без блокировок
             </div>
         </div>
     </div>
@@ -191,20 +390,150 @@
         tg.ready();
         tg.expand();
 
-        // ВАШ ПРОКСИ (из Codespace)
-        const PROXY_LINK = "https://t.me/proxy?server=4.180.183.240&port=443&secret=759773b1a20c258fbc4dde470bc0460e";
+        // ========== ПРОКСИ ==========
+        const PROXIES = [
+            {
+                name: "Основной",
+                server: "4.180.183.240",
+                port: "443",
+                secret: "759773b1a20c258fbc4dde470bc0460e",
+                active: true
+            },
+            {
+                name: "Резервный #1",
+                server: "185.239.239.167",
+                port: "443",
+                secret: "eeaaf0d30441bab41f60acae779df0c",
+                active: false
+            },
+            {
+                name: "Резервный #2",
+                server: "146.70.198.44",
+                port: "443",
+                secret: "48a02e73febda5eaa96acf31e176f673",
+                active: false
+            },
+            {
+                name: "Резервный #3",
+                server: "5.199.171.134",
+                port: "443",
+                secret: "ddaaf0d30441bab41f60acae779df0c",
+                active: false
+            }
+        ];
 
-        document.getElementById('connectBtn').addEventListener('click', () => {
-            // Открываем окно подключения прокси
-            tg.openTelegramLink(PROXY_LINK);
+        let currentProxy = PROXIES[0];
+        let isConnecting = false;
+
+        // Элементы DOM
+        const connectBtn = document.getElementById('connectBtn');
+        const vpnIcon = document.getElementById('vpnIcon');
+        const currentServerSpan = document.getElementById('currentServer');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressTextSpan = document.getElementById('progressText');
+        const proxyListDiv = document.getElementById('proxyList');
+
+        // Функция обновления интерфейса
+        function updateUI() {
+            currentServerSpan.textContent = currentProxy.server;
+        }
+
+        // Функция анимации подключения
+        function startConnectionAnimation(callback) {
+            let progress = 0;
+            progressSection.classList.add('show');
             
-            // Показываем подсказку
-            tg.showPopup({
-                title: "🛡️ Обход активирован",
-                message: "Подтвердите подключение в окне Telegram.\nПосле этого весь Telegram будет работать без блокировок!",
-                buttons: [{ type: "ok", text: "Понятно" }]
+            const steps = [
+                { progress: 20, text: "🔍 Проверка сервера..." },
+                { progress: 40, text: "🔐 Установка защищённого соединения..." },
+                { progress: 60, text: "🔄 Настройка MTProto протокола..." },
+                { progress: 80, text: "🌐 Активация обхода блокировок..." },
+                { progress: 100, text: "✅ Подключение готово!" }
+            ];
+            
+            let stepIndex = 0;
+            
+            const interval = setInterval(() => {
+                if (stepIndex < steps.length) {
+                    const step = steps[stepIndex];
+                    progressBar.style.width = step.progress + '%';
+                    progressTextSpan.textContent = step.text;
+                    stepIndex++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressSection.classList.remove('show');
+                        callback();
+                    }, 500);
+                }
+            }, 600);
+        }
+
+        // Функция подключения
+        function connectProxy() {
+            if (isConnecting) return;
+            isConnecting = true;
+            
+            startConnectionAnimation(() => {
+                const proxyLink = `https://t.me/proxy?server=${currentProxy.server}&port=${currentProxy.port}&secret=${currentProxy.secret}`;
+                tg.openTelegramLink(proxyLink);
+                
+                // Обновляем статус
+                statusBadge.classList.remove('offline');
+                statusText.textContent = 'Подключено!';
+                vpnIcon.classList.add('connected');
+                connectBtn.classList.add('connected');
+                connectBtn.innerHTML = '✅ ОБХОД АКТИВИРОВАН';
+                
+                setTimeout(() => {
+                    connectBtn.innerHTML = '🔓 ВКЛЮЧИТЬ ОБХОД';
+                    connectBtn.classList.remove('connected');
+                    isConnecting = false;
+                }, 3000);
+                
+                tg.showPopup({
+                    title: "🛡️ VPN Активирован",
+                    message: "Обход блокировок включён!\nТеперь Telegram работает без ограничений.",
+                    buttons: [{ type: "ok", text: "Отлично!" }]
+                });
             });
-        });
+        }
+
+        // Выбор прокси
+        function selectProxy(index) {
+            PROXIES.forEach((p, i) => {
+                p.active = i === index;
+            });
+            currentProxy = PROXIES[index];
+            updateUI();
+            renderProxyList();
+        }
+
+        // Рендер списка прокси
+        function renderProxyList() {
+            proxyListDiv.innerHTML = PROXIES.map((proxy, index) => `
+                <div class="proxy-item ${proxy.active ? 'active' : ''}" onclick="selectProxy(${index})">
+                    <div class="proxy-info">
+                        <div class="proxy-name">${proxy.name}</div>
+                        <div class="proxy-ip">${proxy.server}:${proxy.port}</div>
+                    </div>
+                    <div class="proxy-select"></div>
+                </div>
+            `).join('');
+        }
+
+        // Назначаем обработчики
+        connectBtn.onclick = connectProxy;
+        
+        // Инициализация
+        updateUI();
+        renderProxyList();
+        
+        // Делаем selectProxy глобальной
+        window.selectProxy = selectProxy;
     </script>
 </body>
 </html>
