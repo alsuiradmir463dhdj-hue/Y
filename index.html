@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Seagull VPN</title>
+    <title>Seagull VPN • Аниме прокси</title>
     <style>
         * {
             margin: 0;
@@ -13,8 +13,8 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1e1b4b 0%, #0c0a2a 100%);
-            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0c29 100%);
+            font-family: 'Segoe UI', 'Poppins', 'Noto Sans', system-ui, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -24,39 +24,41 @@
             overflow-x: hidden;
         }
 
-        /* Чайки */
+        /* Летающие чайки */
         .seagull {
             position: absolute;
-            font-size: 28px;
+            font-size: 32px;
             pointer-events: none;
             z-index: 10;
-            animation: fly 8s linear infinite;
+            animation: fly 12s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(255,200,200,0.6));
         }
 
         @keyframes fly {
             0% {
-                transform: translateX(-10vw) translateY(0) rotate(0deg);
+                transform: translateX(-10vw) translateY(0) rotate(-10deg);
                 opacity: 0;
             }
-            10% {
+            20% {
                 opacity: 1;
             }
-            90% {
+            80% {
                 opacity: 1;
             }
             100% {
-                transform: translateX(110vw) translateY(-30px) rotate(5deg);
+                transform: translateX(110vw) translateY(-50px) rotate(10deg);
                 opacity: 0;
             }
         }
 
-        .seagull:nth-child(1) { top: 10%; animation-duration: 12s; animation-delay: 0s; }
-        .seagull:nth-child(2) { top: 25%; animation-duration: 10s; animation-delay: 2s; }
-        .seagull:nth-child(3) { top: 45%; animation-duration: 14s; animation-delay: 1s; }
-        .seagull:nth-child(4) { top: 65%; animation-duration: 11s; animation-delay: 3s; }
-        .seagull:nth-child(5) { top: 80%; animation-duration: 13s; animation-delay: 0.5s; }
-        .seagull:nth-child(6) { top: 15%; animation-duration: 9s; animation-delay: 4s; }
-        .seagull:nth-child(7) { top: 55%; animation-duration: 15s; animation-delay: 2.5s; }
+        .seagull:nth-child(1) { top: 8%; animation-duration: 15s; animation-delay: 0s; }
+        .seagull:nth-child(2) { top: 22%; animation-duration: 11s; animation-delay: 2s; }
+        .seagull:nth-child(3) { top: 40%; animation-duration: 13s; animation-delay: 1s; }
+        .seagull:nth-child(4) { top: 58%; animation-duration: 17s; animation-delay: 3s; }
+        .seagull:nth-child(5) { top: 75%; animation-duration: 10s; animation-delay: 0.5s; }
+        .seagull:nth-child(6) { top: 12%; animation-duration: 14s; animation-delay: 4s; }
+        .seagull:nth-child(7) { top: 48%; animation-duration: 16s; animation-delay: 2.5s; }
+        .seagull:nth-child(8) { top: 85%; animation-duration: 12s; animation-delay: 1.2s; }
 
         .container {
             max-width: 380px;
@@ -66,27 +68,27 @@
         }
 
         .card {
-            background: rgba(30, 27, 75, 0.7);
+            background: rgba(30, 33, 58, 0.75);
             backdrop-filter: blur(20px);
-            border-radius: 48px;
+            border-radius: 56px;
             padding: 32px 24px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 180, 200, 0.3);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4);
         }
 
         .anime-icon {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #f472b6, #c084fc);
+            background: linear-gradient(135deg, #ff99cc, #c084fc, #a855f7);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 20px;
             font-size: 52px;
-            animation: float 3s ease-in-out infinite;
-            box-shadow: 0 10px 30px rgba(192, 132, 252, 0.3);
+            animation: float 3s ease-in-out infinite, glow 2s infinite;
+            box-shadow: 0 10px 30px rgba(192, 132, 252, 0.5);
         }
 
         @keyframes float {
@@ -94,10 +96,15 @@
             50% { transform: translateY(-10px); }
         }
 
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 153, 204, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(192, 132, 252, 0.9); }
+        }
+
         h1 {
             font-size: 28px;
             font-weight: 800;
-            background: linear-gradient(135deg, #f472b6, #c084fc);
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
@@ -155,11 +162,11 @@
             50% { opacity: 1; transform: scale(1.2); }
         }
 
-        /* Кнопка открытия */
+        /* Кнопка */
         .open-btn {
             width: 100%;
             padding: 18px;
-            background: linear-gradient(135deg, #f472b6, #c084fc);
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
             border: none;
             border-radius: 60px;
             color: white;
@@ -178,12 +185,27 @@
             transform: scale(0.97);
         }
 
-        /* Аниме цитата */
-        .quote {
-            margin-top: 20px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.4);
+        /* Аниме-цитата */
+        .quote-box {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 28px;
+            transition: all 0.5s;
+        }
+
+        .quote-text {
+            font-size: 13px;
             font-style: italic;
+            color: #ffb7c5;
+            line-height: 1.5;
+        }
+
+        .quote-author {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+            letter-spacing: 1px;
         }
 
         .footer {
@@ -192,7 +214,7 @@
             color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Анимация появления букв */
+        /* Анимация букв */
         .letter {
             display: inline-block;
             opacity: 0;
@@ -208,7 +230,8 @@
     </style>
 </head>
 <body>
-    <!-- Чайки -->
+    <!-- Летающие чайки -->
+    <div class="seagull">🕊️</div>
     <div class="seagull">🕊️</div>
     <div class="seagull">🕊️</div>
     <div class="seagull">🕊️</div>
@@ -220,7 +243,7 @@
     <div class="container">
         <div class="card">
             <div class="anime-icon">
-                🕊️
+                🕊️✨
             </div>
             <h1 id="title">Seagull VPN</h1>
             <div class="sub" id="subText">Обход блокировок Telegram</div>
@@ -251,11 +274,14 @@
                 🕊️ ОТКРЫТЬ
             </button>
 
-            <div class="quote" id="quote">
-                「 繋がる世界 」
+            <!-- Аниме-цитата -->
+            <div class="quote-box" id="quoteBox">
+                <div class="quote-text" id="quoteText">「 君の名前は... 」</div>
+                <div class="quote-author" id="quoteAuthor">— 天気の子</div>
             </div>
+
             <div class="footer">
-                Нажми "ОТКРЫТЬ" → подключись → Telegram разблокирован
+                Нажми "ОТКРЫТЬ" → Telegram разблокирован ✨
             </div>
         </div>
     </div>
@@ -265,7 +291,7 @@
         tg.ready();
         tg.expand();
 
-        // Рабочие прокси
+        // Рабочий прокси
         const PROXY = {
             server: "185.239.239.167",
             port: "443",
@@ -274,7 +300,39 @@
 
         const PROXY_LINK = `https://t.me/proxy?server=${PROXY.server}&port=${PROXY.port}&secret=${PROXY.secret}`;
 
-        // Анимация появления букв в заголовке
+        // Аниме-цитаты
+        const quotes = [
+            { text: "「 繋がりたい、ただそれだけ 」", author: "— 君の名は。" },
+            { text: "「 大丈夫、きっと繋がるから 」", author: "— 天気の子" },
+            { text: "「 僕はここにいるよ 」", author: "— 秒速5センチメートル" },
+            { text: "「 たとえ世界が変わっても 」", author: "— ヴァイオレット・エヴァーガーデン" },
+            { text: "「 もう一度、会いたい 」", author: "— 天気の子" },
+            { text: "「 君を待ってる 」", author: "— ハルヒ" },
+            { text: "「 どこにいても、繋がってる 」", author: "— シュタインズ・ゲート" },
+            { text: "「 一緒に飛ぼう 」", author: "— リズと青い鳥" },
+            { text: "「 海を越えて、君のもとへ 」", author: "— 海獣の子供" },
+            { text: "「 風が吹いたら、会いに行く 」", author: "— 風の谷のナウシカ" }
+        ];
+
+        let currentQuoteIndex = 0;
+
+        // Анимация смены цитаты
+        function changeQuote() {
+            const quoteBox = document.getElementById('quoteBox');
+            const quoteText = document.getElementById('quoteText');
+            const quoteAuthor = document.getElementById('quoteAuthor');
+            
+            quoteBox.style.opacity = '0';
+            
+            setTimeout(() => {
+                currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+                quoteText.textContent = quotes[currentQuoteIndex].text;
+                quoteAuthor.textContent = quotes[currentQuoteIndex].author;
+                quoteBox.style.opacity = '1';
+            }, 300);
+        }
+
+        // Анимация появления букв
         function animateText(element, text, delay = 0.03) {
             element.innerHTML = '';
             const letters = text.split('');
@@ -287,18 +345,19 @@
             });
         }
 
-        // Анимация при открытии
-        function animateOpen() {
+        // Подключение
+        function connectProxy() {
             const btn = document.getElementById('openBtn');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '🕊️ ПОДКЛЮЧЕНИЕ...';
+            btn.innerHTML = '🕊️ 繋いでる...';
             btn.disabled = true;
 
             setTimeout(() => {
                 tg.openTelegramLink(PROXY_LINK);
                 
-                document.getElementById('statusText').textContent = 'Подключено!';
-                document.getElementById('quote').innerHTML = '「 もう大丈夫、繋がったよ 」';
+                document.getElementById('statusText').textContent = '接続完了';
+                document.getElementById('quoteText').innerHTML = '「 繋がったよ、ありがとう 」';
+                document.getElementById('quoteAuthor').innerHTML = '— Seagull VPN';
                 
                 setTimeout(() => {
                     btn.innerHTML = originalText;
@@ -307,20 +366,23 @@
                 
                 tg.showPopup({
                     title: "🕊️ Seagull VPN",
-                    message: "Подтвердите подключение в окне Telegram!\nТеперь Telegram работает без блокировок ✨",
-                    buttons: [{ type: "ok", text: "🌸 Понятно" }]
+                    message: "Подтвердите подключение!\nТеперь Telegram без блокировок ✨",
+                    buttons: [{ type: "ok", text: "🌸 わかった" }]
                 });
             }, 500);
         }
 
-        // Анимация появления при загрузке
-        animateText(document.getElementById('title'), 'Seagull VPN', 0.03);
+        // Запуск анимаций
+        animateText(document.getElementById('title'), 'Seagull VPN', 0.04);
         
         setTimeout(() => {
-            animateText(document.getElementById('subText'), 'Обход блокировок Telegram', 0.02);
-        }, 500);
+            animateText(document.getElementById('subText'), 'Обход блокировок Telegram', 0.025);
+        }, 600);
 
-        document.getElementById('openBtn').addEventListener('click', animateOpen);
+        // Смена цитаты каждые 6 секунд
+        setInterval(changeQuote, 6000);
+
+        document.getElementById('openBtn').addEventListener('click', connectProxy);
     </script>
 </body>
 </html>
