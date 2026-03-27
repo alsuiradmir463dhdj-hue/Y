@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Seagull VPN • Мику</title>
+    <title>Seagull VPN • Мику с голосом</title>
     <style>
         * {
             margin: 0;
@@ -23,20 +23,17 @@
             padding-bottom: 120px;
         }
 
-        /* Звёзды */
         .star {
             position: absolute;
             background: white;
             border-radius: 50%;
             animation: twinkle 2s infinite;
         }
-
         @keyframes twinkle {
             0%, 100% { opacity: 0.2; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.2); }
         }
 
-        /* Чайки */
         .seagull {
             position: absolute;
             font-size: 28px;
@@ -44,7 +41,6 @@
             z-index: 10;
             animation: fly 12s linear infinite;
         }
-
         @keyframes fly {
             0% { transform: translateX(-10vw) translateY(0); opacity: 0; }
             20% { opacity: 1; }
@@ -58,7 +54,10 @@
             margin: 0 auto;
             position: relative;
             z-index: 20;
+            opacity: 0;
+            transition: opacity 0.5s;
         }
+        .container.visible { opacity: 1; }
 
         .card {
             background: rgba(30, 27, 58, 0.85);
@@ -85,7 +84,6 @@
             gap: 12px;
             margin-bottom: 20px;
         }
-
         .balance-item {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 40px;
@@ -97,11 +95,9 @@
             justify-content: center;
             cursor: pointer;
         }
-
         .balance-item span:first-child { font-size: 20px; }
         .balance-item span:last-child { font-weight: 700; font-size: 18px; }
 
-        /* Ежедневный бонус */
         .daily-bonus {
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 153, 0, 0.2));
             border-radius: 32px;
@@ -205,50 +201,66 @@
 
         .hidden { display: none; }
 
-        /* Мику */
-        .miku-container {
+        .miku-overlay {
             position: fixed;
-            bottom: 0;
+            top: 0;
             left: 0;
             right: 0;
-            z-index: 100;
-            pointer-events: none;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.5s;
         }
-        .miku {
-            position: absolute;
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .miku-center { text-align: center; animation: mikuPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes mikuPop { from { transform: scale(0.2) rotate(-10deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
+        .miku-center img {
+            width: 180px;
+            border-radius: 50%;
+            box-shadow: 0 0 40px #00ccff;
+            animation: mikuGlow 2s infinite;
+        }
+        @keyframes mikuGlow { 0%,100% { box-shadow: 0 0 20px #00ccff; } 50% { box-shadow: 0 0 50px #ff99cc; } }
+        .speech-center {
+            background: rgba(0,0,0,0.9);
+            color: #00ccff;
+            padding: 12px 24px;
+            border-radius: 40px;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .miku-bottom {
+            position: fixed;
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 90px;
-            filter: drop-shadow(0 0 15px #00ccff);
-            animation: mikuFloat 3s ease-in-out infinite;
-            pointer-events: auto;
+            z-index: 100;
             cursor: pointer;
+            animation: slideDown 0.8s ease-out;
         }
-        @keyframes mikuFloat {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-10px); }
-        }
+        @keyframes slideDown { from { transform: translateX(-50%) translateY(-200px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        .miku-bottom img { width: 60px; filter: drop-shadow(0 0 10px #00ccff); animation: mikuFloat 3s ease-in-out infinite; }
+        @keyframes mikuFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         .speech-bubble {
             position: absolute;
-            bottom: 85px;
+            bottom: 65px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.9);
             color: #00ccff;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             white-space: nowrap;
             animation: fadeOut 3s forwards;
             pointer-events: none;
-            font-family: monospace;
         }
-        @keyframes fadeOut {
-            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
-            70% { opacity: 1; }
-            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-        }
+        @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-15px); } }
 
         .footer { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 16px; }
         .letter { display: inline-block; opacity: 0; animation: fadeInLetter 0.05s forwards; }
@@ -262,7 +274,7 @@
     <div class="seagull" style="top: 65%; left: 0; animation-duration: 13s; animation-delay: 1s;">🕊️</div>
     <div id="stars"></div>
 
-    <div class="container">
+    <div class="container" id="appContainer">
         <div class="card">
             <h1 id="title">🎡 Seagull VPN</h1>
             <div class="balance-row">
@@ -270,7 +282,6 @@
                 <div class="balance-item"><span>🪙</span><span id="coinsCount">0</span></div>
             </div>
 
-            <!-- Ежедневный бонус -->
             <div class="daily-bonus" id="dailyBonus">
                 <h3>📅 ЕЖЕДНЕВНЫЙ БОНУС</h3>
                 <div class="daily-reward" id="dailyReward">+5 ⭐ | +20 🪙</div>
@@ -316,9 +327,15 @@
         </div>
     </div>
 
-    <!-- Мику -->
-    <div class="miku-container">
-        <div class="miku" id="miku">🎤💙</div>
+    <div id="mikuIntro" class="miku-overlay">
+        <div class="miku-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077035.png" alt="Мику" style="width:180px; border-radius:50%;">
+            <div class="speech-center" id="mikuSpeech">💙 Привет! Я Мику! 💙</div>
+        </div>
+    </div>
+    <div id="mikuBottom" class="miku-bottom" style="display: none;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1077/1077035.png" alt="Мику" style="width:60px;">
+        <div id="bottomSpeech" class="speech-bubble" style="display: none;"></div>
     </div>
 
     <script>
@@ -338,6 +355,18 @@
             activeProxy: null,
             lastDaily: 0
         };
+
+        // ГОЛОС МИКУ
+        function speak(text) {
+            if (!window.speechSynthesis) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.3;
+            utterance.volume = 1;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        }
 
         function loadData() {
             const saved = localStorage.getItem('seagull_user');
@@ -375,30 +404,31 @@
             return 'дней';
         }
 
-        function addStars(amount) { userData.stars += amount; saveData(); updateUI(); mikuSpeak(`⭐ +${amount} звезд!`); }
-        function addCoins(amount) { userData.coins += amount; saveData(); updateUI(); mikuSpeak(`🪙 +${amount} монет!`); }
+        function addStars(amount) { userData.stars += amount; saveData(); updateUI(); mikuSpeak(`+${amount} звезд!`); speak(`Ура! ${amount} звезд получено!`); }
+        function addCoins(amount) { userData.coins += amount; saveData(); updateUI(); mikuSpeak(`+${amount} монет!`); speak(`Отлично! ${amount} монет!`); }
         function showMessage(msg) { tg.showPopup({ title: "📢", message: msg, buttons: [{ type: "ok" }] }); }
 
         function mikuSpeak(text) {
-            const bubble = document.createElement('div');
-            bubble.className = 'speech-bubble';
+            const bubble = document.getElementById('bottomSpeech');
             bubble.textContent = `💙 ${text} 💙`;
-            document.querySelector('.miku-container').appendChild(bubble);
-            setTimeout(() => bubble.remove(), 3000);
+            bubble.style.display = 'block';
+            setTimeout(() => { bubble.style.display = 'none'; }, 3000);
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addToInventory(type, days) {
             userData.inventory.push({ type, days, addedAt: Date.now() });
             saveData(); updateUI();
-            mikuSpeak(`🎁 Прокси на ${days} дней в инвентаре!`);
+            mikuSpeak(`Прокси на ${days} дней в инвентаре!`);
+            speak(`Поздравляю! Прокси на ${days} дней теперь в инвентаре!`);
             showMessage(`🎁 Получен прокси на ${days} дней! Зайди в инвентарь чтобы активировать.`);
         }
 
-        function useProxyFromInventory(index) {
+        window.useProxyFromInventory = function(index) {
             if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
                 showMessage("❌ У вас уже активен прокси! Дождитесь окончания.");
-                mikuSpeak("❌ Уже есть активный прокси!");
+                mikuSpeak("Уже есть активный прокси!");
+                speak("Подожди, у тебя уже есть активный прокси!");
                 return;
             }
             const item = userData.inventory[index];
@@ -407,10 +437,11 @@
             userData.activeProxy = { expiresAt };
             userData.inventory.splice(index, 1);
             saveData(); updateUI();
-            mikuSpeak(`✅ Прокси активирован на ${item.days} дней!`);
+            mikuSpeak(`Прокси активирован на ${item.days} дней!`);
+            speak(`Прокси активирован! Теперь Telegram работает без блокировок на ${item.days} дней!`);
             showMessage(`✅ Прокси активирован на ${item.days} дней!`);
             tg.openTelegramLink(PROXY_LINK);
-        }
+        };
 
         function renderInventory() {
             const container = document.getElementById('inventoryList');
@@ -420,7 +451,6 @@
             `).join('');
         }
 
-        // Ежедневный бонус
         function updateDailyButton() {
             const now = Date.now();
             const last = userData.lastDaily || 0;
@@ -443,7 +473,8 @@
             const now = Date.now();
             if (userData.lastDaily && (now - userData.lastDaily) < 24 * 60 * 60 * 1000) {
                 showMessage("⏰ Бонус уже получен! Приходи завтра.");
-                mikuSpeak("⏰ Бонус уже получен! Приходи завтра.");
+                mikuSpeak("Бонус уже получен! Приходи завтра!");
+                speak("Бонус уже получен! Приходи завтра!");
                 return;
             }
             userData.lastDaily = now;
@@ -452,12 +483,15 @@
             const coinsGain = isTuesday ? 40 : 20;
             addStars(starsGain);
             addCoins(coinsGain);
-            if (isTuesday) mikuSpeak("🎉 Вторник! Двойной бонус! 🎉");
+            if (isTuesday) {
+                mikuSpeak("Вторник! Двойной бонус!");
+                speak("Ура! Сегодня вторник, двойной бонус!");
+            }
             updateDailyButton();
             showMessage(`✨ Получено ${starsGain} ⭐ и ${coinsGain} 🪙!`);
         }
 
-        // Колесо
+        // Колесо (упрощённо)
         const canvas = document.getElementById('wheelCanvas');
         const ctx = canvas.getContext('2d');
         const segments = [
@@ -487,7 +521,7 @@
         }
         function spinWheel() {
             if(spinning) return;
-            if(userData.stars<1){ showMessage("❌ Недостаточно звёзд!"); mikuSpeak("⭐ Нужна 1 звезда!"); return; }
+            if(userData.stars<1){ showMessage("❌ Недостаточно звёзд!"); mikuSpeak("Нужна 1 звезда!"); speak("У тебя нет звёзд, крути ежедневный бонус!"); return; }
             userData.stars--; saveData(); updateUI();
             spinning=true;
             const spinAngle = 360*6+Math.random()*360;
@@ -509,7 +543,8 @@
                     if(prize.type==="coins") addCoins(prize.value);
                     else if(prize.type==="stars") addStars(prize.value);
                     else if(prize.type==="proxy") addToInventory(`proxy_${prize.value}`, prize.value);
-                    mikuSpeak(`🎲 Выигрыш: ${prize.label}!`);
+                    mikuSpeak(`Выигрыш: ${prize.label}!`);
+                    speak(`Ты выиграл ${prize.label}!`);
                     document.getElementById('spinResult').innerHTML = `<div>🎉 ВЫИГРЫШ: ${prize.label} 🎉</div>`;
                     document.getElementById('spinResult').style.display='block';
                     setTimeout(()=>document.getElementById('spinResult').style.display='none',3000);
@@ -519,7 +554,6 @@
             requestAnimationFrame(animateSpin);
         }
 
-        // Магазин
         function initShop() {
             document.querySelectorAll('.shop-buy').forEach(btn => {
                 btn.onclick = () => {
@@ -543,7 +577,7 @@
                         updateDailyButton();
                         showMessage(`🪙 Получено ${gain} монет!`);
                     } else if(type==="proxy_5" || type==="proxy_9"){
-                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); mikuSpeak(`❌ Не хватает монет!`); return; }
+                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); mikuSpeak(`Не хватает монет!`); speak(`У тебя мало монет, нужно ${cost}`); return; }
                         userData.coins -= cost;
                         addToInventory(type, gain);
                         saveData(); updateUI();
@@ -585,7 +619,6 @@
         document.getElementById('spinBtn').onclick = spinWheel;
         document.getElementById('dailyBonus').onclick = claimDaily;
 
-        // Звёзды
         for(let i=0;i<80;i++){
             const star=document.createElement('div');
             star.className='star';
@@ -612,8 +645,23 @@
         drawWheel();
         loadData();
         initShop();
-        mikuSpeak("Привет! Я Мику! Крути колесо за звёзды!");
-        window.useProxyFromInventory = useProxyFromInventory;
+
+        // Анимация приветствия Мику с голосом
+        setTimeout(() => {
+            const speech = document.getElementById('mikuSpeech');
+            speech.textContent = "💙 Привет! Я Мику! Готова крутить колесо? 💙";
+            speak("Привет! Я Мику! Готова крутить колесо?");
+            setTimeout(() => {
+                document.getElementById('mikuIntro').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('mikuIntro').style.display = 'none';
+                    document.getElementById('mikuBottom').style.display = 'block';
+                    document.getElementById('appContainer').classList.add('visible');
+                    mikuSpeak("Привет! Крути колесо за звёзды!");
+                    speak("Давай крутить колесо!");
+                }, 500);
+            }, 3000);
+        }, 1000);
     </script>
 </body>
 </html>
