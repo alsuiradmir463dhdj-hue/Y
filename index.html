@@ -21,7 +21,6 @@
             overflow-x: hidden;
         }
 
-        /* Звёзды */
         .star {
             position: absolute;
             background: white;
@@ -34,88 +33,23 @@
             50% { opacity: 1; transform: scale(1.2); }
         }
 
-        /* Чайки */
         .seagull {
-            position: absolute;
-            font-size: 32px;
-            pointer-events: none;
-            z-index: 10;
-            animation: fly 12s linear infinite;
-            filter: drop-shadow(0 0 8px rgba(255,255,200,0.8));
-        }
-
-        @keyframes fly {
-            0% {
-                transform: translateX(-10vw) translateY(0) rotate(-10deg);
-                opacity: 0;
-            }
-            20% { opacity: 1; }
-            80% { opacity: 1; }
-            100% {
-                transform: translateX(110vw) translateY(-50px) rotate(10deg);
-                opacity: 0;
-            }
-        }
-
-        /* Рыбки */
-        .fish {
             position: absolute;
             font-size: 28px;
             pointer-events: none;
             z-index: 10;
-            animation: swim 8s ease-in-out infinite;
+            animation: fly 12s linear infinite;
         }
 
-        @keyframes swim {
-            0% {
-                transform: translateX(-10vw) translateY(0) rotate(0deg);
-                opacity: 0;
-            }
+        @keyframes fly {
+            0% { transform: translateX(-10vw) translateY(0); opacity: 0; }
             20% { opacity: 1; }
             80% { opacity: 1; }
-            100% {
-                transform: translateX(110vw) translateY(20px) rotate(5deg);
-                opacity: 0;
-            }
-        }
-
-        /* Аниме-персонажи (реальные) */
-        .anime-char {
-            position: absolute;
-            font-size: 42px;
-            pointer-events: none;
-            z-index: 10;
-            animation: float 4s ease-in-out infinite;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
-            text-shadow: 0 0 5px rgba(255,255,255,0.5);
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(3deg); }
-        }
-
-        /* Позиции персонажей */
-        .nezuko { bottom: 15px; left: 5px; animation-duration: 3.5s; }
-        .tanjiro { bottom: 60px; right: 8px; animation-duration: 4s; }
-        .zenitsu { top: 65px; left: 8px; animation-duration: 4.2s; }
-        .inosuke { top: 45px; right: 10px; animation-duration: 3.8s; }
-        .chika { bottom: 95px; left: 45%; transform: translateX(-50%); animation-duration: 4.5s; }
-        .kaguya { top: 20%; right: 12%; animation-duration: 5s; }
-        .naruto { bottom: 120px; right: 20%; animation-duration: 4.2s; }
-        .sasuke { top: 75%; left: 12%; animation-duration: 4.7s; }
-        .luffy { bottom: 30%; right: 5%; animation-duration: 5.2s; }
-        .goku { top: 12%; left: 8%; animation-duration: 4.9s; }
-
-        @media (max-width: 600px) {
-            .anime-char { font-size: 35px; }
-            .nezuko { bottom: 10px; left: 2px; }
-            .tanjiro { bottom: 45px; right: 2px; }
-            .zenitsu { top: 55px; left: 2px; }
+            100% { transform: translateX(110vw) translateY(-40px); opacity: 0; }
         }
 
         .container {
-            max-width: 380px;
+            max-width: 400px;
             width: 100%;
             margin: 0 auto;
             position: relative;
@@ -126,167 +60,194 @@
             background: rgba(30, 27, 58, 0.85);
             backdrop-filter: blur(20px);
             border-radius: 48px;
-            padding: 28px 22px;
-            text-align: center;
+            padding: 20px;
+            margin-bottom: 16px;
             border: 1px solid rgba(255, 180, 200, 0.4);
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4);
-        }
-
-        .anime-icon {
-            width: 90px;
-            height: 90px;
-            background: linear-gradient(135deg, #ff99cc, #c084fc, #a855f7);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 48px;
-            animation: floatIcon 3s ease-in-out infinite, glow 2s infinite;
-        }
-
-        @keyframes floatIcon {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 10px rgba(255, 153, 204, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(192, 132, 252, 0.9); }
         }
 
         h1 {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 800;
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 6px;
+            text-align: center;
+            margin-bottom: 16px;
         }
 
-        .sub {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
+        .balance-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
-        .status-area {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 28px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .status-row:last-child {
-            border-bottom: none;
-        }
-
-        .status-label {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-        }
-
-        .status-value {
-            font-family: monospace;
-            font-size: 11px;
-            font-weight: 500;
+        .balance-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 8px 16px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
         }
 
-        .ping-dot {
-            width: 8px;
-            height: 8px;
-            background: #22c55e;
+        .balance-item span:first-child {
+            font-size: 20px;
+        }
+
+        .balance-item span:last-child {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .stars { color: #ffd700; }
+        .coins { color: #ffaa44; }
+
+        /* Колесо */
+        .wheel-container {
+            position: relative;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 260px;
+            height: 260px;
             border-radius: 50%;
-            animation: pulse 1.2s infinite;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.4; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-
-        .open-btn {
-            width: 100%;
-            padding: 16px;
+        .spin-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 65px;
+            height: 65px;
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             border: none;
-            border-radius: 50px;
+            border-radius: 50%;
             color: white;
-            font-size: 17px;
             font-weight: 700;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 12px;
+            z-index: 10;
+        }
+
+        .spin-btn:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        /* Магазин */
+        .shop-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 12px;
+        }
+
+        .shop-info {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
+            gap: 10px;
         }
 
-        .open-btn:active {
-            transform: scale(0.97);
+        .shop-info span:first-child {
+            font-size: 24px;
         }
 
-        .sponsor-card {
-            margin-top: 20px;
-            padding: 14px;
-            background: linear-gradient(135deg, rgba(255, 153, 204, 0.2), rgba(192, 132, 252, 0.2));
-            border-radius: 28px;
-            border: 1px solid rgba(255, 180, 200, 0.5);
+        .shop-buy {
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+            border: none;
+            border-radius: 30px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
         }
 
-        .sponsor-card:active {
-            transform: scale(0.98);
+        .shop-buy:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .sponsor-title {
+        /* Инвентарь */
+        .inventory-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .inventory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 10px 12px;
+        }
+
+        .use-btn {
+            background: #22c55e;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 16px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .active-proxy {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            border-radius: 20px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .proxy-link {
+            font-family: monospace;
+            font-size: 10px;
+            word-break: break-all;
+            margin: 8px 0;
+        }
+
+        .timer {
             font-size: 14px;
             font-weight: 700;
-            color: #ffb7c5;
-            margin-bottom: 6px;
+            color: #ffd700;
         }
 
-        .sponsor-text {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .quote-box {
-            margin-top: 18px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            transition: all 0.5s;
-        }
-
-        .quote-text {
-            font-size: 11px;
-            font-style: italic;
-            color: #ffb7c5;
-        }
-
-        .quote-author {
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 5px;
+        button {
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+            border: none;
+            border-radius: 30px;
+            padding: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
         }
 
         .footer {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
             margin-top: 16px;
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.3);
         }
 
         .letter {
@@ -298,86 +259,94 @@
         @keyframes fadeInLetter {
             to { opacity: 1; }
         }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 0;
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <!-- Звёзды -->
+    <div class="seagull" style="top: 10%; left: 0; animation-duration: 14s;">🕊️</div>
+    <div class="seagull" style="top: 35%; left: 0; animation-duration: 11s; animation-delay: 2s;">🕊️</div>
+    <div class="seagull" style="top: 65%; left: 0; animation-duration: 13s; animation-delay: 1s;">🕊️</div>
     <div id="stars"></div>
-
-    <!-- Чайки -->
-    <div class="seagull" style="top: 8%; animation-duration: 14s;">🕊️</div>
-    <div class="seagull" style="top: 25%; animation-duration: 11s; animation-delay: 2s;">🕊️</div>
-    <div class="seagull" style="top: 45%; animation-duration: 13s; animation-delay: 1s;">🕊️</div>
-    <div class="seagull" style="top: 65%; animation-duration: 16s; animation-delay: 3s;">🕊️</div>
-    <div class="seagull" style="top: 82%; animation-duration: 10s; animation-delay: 0.5s;">🕊️</div>
-    <div class="seagull" style="top: 15%; animation-duration: 12s; animation-delay: 4s;">🕊️</div>
-    <div class="seagull" style="top: 55%; animation-duration: 15s; animation-delay: 2.2s;">🕊️</div>
-
-    <!-- Рыбки -->
-    <div class="fish" style="top: 70%; animation-duration: 9s; animation-delay: 1s;">🐟</div>
-    <div class="fish" style="top: 85%; animation-duration: 11s; animation-delay: 3s;">🐠</div>
-    <div class="fish" style="top: 60%; animation-duration: 7s; animation-delay: 0s;">🐡</div>
-
-    <!-- РЕАЛЬНЫЕ АНИМЕ-ПЕРСОНАЖИ (люди) -->
-    <div class="anime-char nezuko">👧🏻🌸</div>
-    <div class="anime-char tanjiro">👦🏻🗡️</div>
-    <div class="anime-char zenitsu">👦🏻⚡</div>
-    <div class="anime-char inosuke">👦🏻🐗</div>
-    <div class="anime-char chika">👧🏻💖</div>
-    <div class="anime-char kaguya">👩🏻🎴</div>
-    <div class="anime-char naruto">🧡🍥</div>
-    <div class="anime-char sasuke">💜🗡️</div>
-    <div class="anime-char luffy">🏴‍☠️👒</div>
-    <div class="anime-char goku">🧡🐉</div>
 
     <div class="container">
         <div class="card">
-            <div class="anime-icon">
-                🕊️✨
-            </div>
-            <h1 id="title">Seagull VPN</h1>
-            <div class="sub" id="subText">Обход блокировок Telegram</div>
-
-            <div class="status-area">
-                <div class="status-row">
-                    <span class="status-label">🌐 Сервер</span>
-                    <span class="status-value" id="serverText">185.239.239.167</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">🔌 Порт</span>
-                    <span class="status-value">443</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">🔐 Шифрование</span>
-                    <span class="status-value">MTProto 2.0</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">📡 Статус</span>
-                    <span class="status-value">
-                        <span class="ping-dot"></span>
-                        <span id="statusText">Готов</span>
-                    </span>
-                </div>
+            <h1 id="title">🎡 Seagull VPN</h1>
+            <div class="balance-row">
+                <div class="balance-item"><span>⭐</span><span id="starsCount">0</span></div>
+                <div class="balance-item"><span>🪙</span><span id="coinsCount">0</span></div>
             </div>
 
-            <button class="open-btn" id="openBtn">
-                🕊️ ОТКРЫТЬ
-            </button>
-
-            <!-- Карточка спонсора -->
-            <div class="sponsor-card" id="sponsorCard">
-                <div class="sponsor-title">⭐ SPONSOR ⭐</div>
-                <div class="sponsor-text">📱 <b>Seagull Proxy</b> раздаёт прокси!</div>
-                <div class="sponsor-text" style="font-size: 10px;">🔗 @seagull_proxy</div>
+            <div class="nav-buttons">
+                <button class="nav-btn active" id="wheelTab">🎡 Колесо</button>
+                <button class="nav-btn" id="shopTab">🛒 Магазин</button>
+                <button class="nav-btn" id="inventoryTab">🎒 Инвентарь</button>
             </div>
 
-            <div class="quote-box" id="quoteBox">
-                <div class="quote-text" id="quoteText">「 君の名は... 」</div>
-                <div class="quote-author" id="quoteAuthor">— 君の名は。</div>
+            <!-- Колесо -->
+            <div id="wheelPanel">
+                <div class="wheel-container">
+                    <canvas id="wheelCanvas" width="400" height="400"></canvas>
+                    <button class="spin-btn" id="spinBtn">КРУТИТЬ<br>1⭐</button>
+                </div>
+                <div id="spinResult" class="active-proxy" style="display: none; margin-top: 16px;"></div>
+            </div>
+
+            <!-- Магазин -->
+            <div id="shopPanel" class="hidden">
+                <div class="shop-items">
+                    <div class="shop-item">
+                        <div class="shop-info"><span>⭐</span><span>5 звёзд</span></div>
+                        <button class="shop-buy" data-type="stars" data-cost="0" data-gain="5">Получить ежедневно</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="shop-info"><span>🪙</span><span>100 монет</span></div>
+                        <button class="shop-buy" data-type="coins" data-cost="0" data-gain="100">Забрать бонус</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="shop-info"><span>📦</span><span>Прокси на 5 дней</span></div>
+                        <button class="shop-buy" data-type="proxy_5" data-cost="50" data-gain="5">Купить за 50🪙</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="shop-info"><span>📦</span><span>Прокси на 9 дней</span></div>
+                        <button class="shop-buy" data-type="proxy_9" data-cost="80" data-gain="9">Купить за 80🪙</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Инвентарь -->
+            <div id="inventoryPanel" class="hidden">
+                <div id="inventoryList" class="inventory-items"></div>
+            </div>
+
+            <!-- Активный прокси -->
+            <div id="activeProxyPanel" class="active-proxy" style="display: none;">
+                <div>🔌 АКТИВНЫЙ ПРОКСИ</div>
+                <div id="activeProxyLink" class="proxy-link"></div>
+                <div id="activeTimer" class="timer"></div>
+                <button id="copyProxyBtn">📋 Копировать ссылку</button>
             </div>
 
             <div class="footer">
-                Нажми "ОТКРЫТЬ" → Telegram разблокирован ✨
+                Крути колесо за 1⭐ | Выигрывай монеты и прокси
             </div>
         </div>
     </div>
@@ -387,73 +356,296 @@
         tg.ready();
         tg.expand();
 
-        const PROXY = {
-            server: "185.239.239.167",
-            port: "443",
-            secret: "eeaaf0d30441bab41f60acae779df0c"
+        // ВАШ ПРОКСИ
+        const PROXY_SERVER = "185.239.239.167";
+        const PROXY_PORT = "443";
+        const PROXY_SECRET = "eeaaf0d30441bab41f60acae779df0c";
+        const PROXY_LINK = `https://t.me/proxy?server=${PROXY_SERVER}&port=${PROXY_PORT}&secret=${PROXY_SECRET}`;
+
+        // Данные пользователя
+        let userData = {
+            stars: 0,
+            coins: 0,
+            inventory: [], // { type: "proxy_5" или "proxy_9", days: 5 или 9 }
+            activeProxy: null, // { expiresAt: timestamp }
+            lastDaily: 0
         };
-        const PROXY_LINK = `https://t.me/proxy?server=${PROXY.server}&port=${PROXY.port}&secret=${PROXY.secret}`;
 
-        const quotes = [
-            { text: "「 君の名は... 」", author: "— 君の名は。" },
-            { text: "「 大丈夫、きっと会える 」", author: "— 天気の子" },
-            { text: "「 僕は君に会いに行く 」", author: "— 秒速5センチメートル" },
-            { text: "「 心が叫びたがってる 」", author: "— ヴァイオレット・エヴァーガーデン" },
-            { text: "「 一緒に飛ぼう 」", author: "— リズと青い鳥" },
-            { text: "「 俺はなる！ 」", author: "— NARUTO" },
-            { text: "「 友達になるんだ 」", author: "— ONE PIECE" }
+        function loadData() {
+            const saved = localStorage.getItem('seagull_user');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    userData = { ...userData, ...parsed };
+                    if (userData.activeProxy && userData.activeProxy.expiresAt < Date.now()) {
+                        userData.activeProxy = null;
+                    }
+                } catch(e) {}
+            }
+            updateUI();
+        }
+
+        function saveData() {
+            localStorage.setItem('seagull_user', JSON.stringify(userData));
+        }
+
+        function updateUI() {
+            document.getElementById('starsCount').innerText = userData.stars;
+            document.getElementById('coinsCount').innerText = userData.coins;
+            
+            if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
+                document.getElementById('activeProxyPanel').style.display = 'block';
+                document.getElementById('activeProxyLink').innerHTML = PROXY_LINK;
+                const remaining = Math.ceil((userData.activeProxy.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+                document.getElementById('activeTimer').innerHTML = `⏰ Осталось: ${remaining} ${getDayWord(remaining)}`;
+            } else {
+                document.getElementById('activeProxyPanel').style.display = 'none';
+                if (userData.activeProxy) {
+                    userData.activeProxy = null;
+                    saveData();
+                }
+            }
+            
+            renderInventory();
+        }
+
+        function getDayWord(days) {
+            if (days % 10 === 1 && days % 100 !== 11) return 'день';
+            if ([2,3,4].includes(days % 10) && ![12,13,14].includes(days % 100)) return 'дня';
+            return 'дней';
+        }
+
+        function addStars(amount) {
+            userData.stars += amount;
+            saveData();
+            updateUI();
+        }
+
+        function addCoins(amount) {
+            userData.coins += amount;
+            saveData();
+            updateUI();
+        }
+
+        function addToInventory(type, days) {
+            userData.inventory.push({ type, days, addedAt: Date.now() });
+            saveData();
+            updateUI();
+            showMessage(`🎁 Получен прокси на ${days} дней! Зайди в инвентарь чтобы активировать.`);
+        }
+
+        function useProxyFromInventory(index) {
+            if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
+                showMessage("❌ У вас уже активен прокси! Дождитесь окончания.");
+                return;
+            }
+            const item = userData.inventory[index];
+            if (!item) return;
+            
+            const expiresAt = Date.now() + item.days * 24 * 60 * 60 * 1000;
+            userData.activeProxy = { expiresAt };
+            userData.inventory.splice(index, 1);
+            saveData();
+            updateUI();
+            showMessage(`✅ Прокси активирован на ${item.days} дней!`);
+            
+            tg.openTelegramLink(PROXY_LINK);
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventoryList');
+            if (userData.inventory.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px;">🎒 Пусто</div>';
+                return;
+            }
+            container.innerHTML = userData.inventory.map((item, i) => `
+                <div class="inventory-item">
+                    <div>📦 Прокси на ${item.days} дней</div>
+                    <button class="use-btn" onclick="useProxyFromInventory(${i})">Активировать</button>
+                </div>
+            `).join('');
+        }
+
+        function showMessage(msg) {
+            tg.showPopup({ title: "📢", message: msg, buttons: [{ type: "ok" }] });
+        }
+
+        // Колесо
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const segments = [
+            { label: "5🪙", color: "#ff99cc", type: "coins", value: 5 },
+            { label: "10🪙", color: "#c084fc", type: "coins", value: 10 },
+            { label: "3⭐", color: "#a855f7", type: "stars", value: 3 },
+            { label: "5⭐", color: "#ff69b4", type: "stars", value: 5 },
+            { label: "📦5д", color: "#d946ef", type: "proxy", value: 5 },
+            { label: "📦9д", color: "#f472b6", type: "proxy", value: 9 }
         ];
-        let currentQuoteIndex = 0;
-
-        function animateText(element, text, delay = 0.04) {
-            element.innerHTML = '';
-            text.split('').forEach((letter, i) => {
-                const span = document.createElement('span');
-                span.className = 'letter';
-                span.textContent = letter;
-                span.style.animationDelay = `${i * delay}s`;
-                element.appendChild(span);
+        
+        let currentAngle = 0;
+        let spinning = false;
+        
+        function drawWheel() {
+            const size = 400;
+            canvas.width = size;
+            canvas.height = size;
+            const center = size / 2;
+            const radius = size / 2 - 10;
+            const angleStep = (Math.PI * 2) / segments.length;
+            
+            for (let i = 0; i < segments.length; i++) {
+                const start = currentAngle + i * angleStep;
+                const end = start + angleStep;
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, start, end);
+                ctx.fillStyle = segments[i].color;
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(start + angleStep / 2);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 18px 'Segoe UI'";
+                ctx.shadowBlur = 0;
+                ctx.fillText(segments[i].label, radius - 35, 10);
+                ctx.restore();
+            }
+            ctx.beginPath();
+            ctx.moveTo(center - 15, 15);
+            ctx.lineTo(center, 0);
+            ctx.lineTo(center + 15, 15);
+            ctx.fillStyle = "white";
+            ctx.fill();
+        }
+        
+        function spinWheel() {
+            if (spinning) return;
+            if (userData.stars < 1) {
+                showMessage("❌ Недостаточно звёзд! Получите ежедневный бонус в магазине.");
+                return;
+            }
+            userData.stars--;
+            saveData();
+            updateUI();
+            
+            spinning = true;
+            const spinAngle = 360 * 6 + Math.random() * 360;
+            const targetAngle = currentAngle + (spinAngle * Math.PI / 180);
+            const duration = 2000;
+            const startTime = performance.now();
+            const startAngle = currentAngle;
+            
+            function animateSpin(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                const ease = 1 - Math.pow(1 - progress, 3);
+                currentAngle = startAngle + (targetAngle - startAngle) * ease;
+                drawWheel();
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    currentAngle = targetAngle % (Math.PI * 2);
+                    drawWheel();
+                    const angleStep = (Math.PI * 2) / segments.length;
+                    const pointerAngle = (Math.PI * 2 - (currentAngle % (Math.PI * 2))) % (Math.PI * 2);
+                    const index = Math.floor(pointerAngle / angleStep) % segments.length;
+                    const prize = segments[index];
+                    
+                    if (prize.type === "coins") {
+                        addCoins(prize.value);
+                        showMessage(`🎉 Вы выиграли ${prize.value} 🪙!`);
+                    } else if (prize.type === "stars") {
+                        addStars(prize.value);
+                        showMessage(`🎉 Вы выиграли ${prize.value} ⭐!`);
+                    } else if (prize.type === "proxy") {
+                        addToInventory(`proxy_${prize.value}`, prize.value);
+                    }
+                    
+                    document.getElementById('spinResult').innerHTML = `<div>🎉 ВЫИГРЫШ: ${prize.label} 🎉</div>`;
+                    document.getElementById('spinResult').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('spinResult').style.display = 'none';
+                    }, 3000);
+                    
+                    spinning = false;
+                }
+            }
+            requestAnimationFrame(animateSpin);
+        }
+        
+        // Магазин
+        function initShop() {
+            document.querySelectorAll('.shop-buy').forEach(btn => {
+                btn.onclick = () => {
+                    const type = btn.dataset.type;
+                    const cost = parseInt(btn.dataset.cost);
+                    const gain = parseInt(btn.dataset.gain);
+                    
+                    if (type === "stars") {
+                        const now = Date.now();
+                        if (now - userData.lastDaily < 24 * 60 * 60 * 1000) {
+                            showMessage("⏰ Ежедневный бонус уже получен! Приходи завтра.");
+                            return;
+                        }
+                        userData.lastDaily = now;
+                        addStars(gain);
+                        showMessage(`✨ Получено ${gain} звёзд!`);
+                    } else if (type === "coins") {
+                        addCoins(gain);
+                        showMessage(`🪙 Получено ${gain} монет!`);
+                    } else if (type === "proxy_5" || type === "proxy_9") {
+                        if (userData.coins < cost) {
+                            showMessage(`❌ Недостаточно монет! Нужно ${cost} 🪙`);
+                            return;
+                        }
+                        userData.coins -= cost;
+                        addToInventory(type, gain);
+                        saveData();
+                        updateUI();
+                        showMessage(`✅ Куплен прокси на ${gain} дней! Забери в инвентаре.`);
+                    }
+                };
             });
         }
-
-        function changeQuote() {
-            const quoteBox = document.getElementById('quoteBox');
-            const quoteText = document.getElementById('quoteText');
-            const quoteAuthor = document.getElementById('quoteAuthor');
-            quoteBox.style.opacity = '0';
-            setTimeout(() => {
-                currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
-                quoteText.textContent = quotes[currentQuoteIndex].text;
-                quoteAuthor.textContent = quotes[currentQuoteIndex].author;
-                quoteBox.style.opacity = '1';
-            }, 300);
-        }
-
-        function connectProxy() {
-            const btn = document.getElementById('openBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '🕊️ 繋いでる...';
-            btn.disabled = true;
-            setTimeout(() => {
-                tg.openTelegramLink(PROXY_LINK);
-                document.getElementById('statusText').textContent = '接続完了';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
-                tg.showPopup({
-                    title: "🕊️ Seagull VPN",
-                    message: "Подтвердите подключение!\nТеперь Telegram без блокировок ✨",
-                    buttons: [{ type: "ok", text: "🌸 わかった" }]
-                });
-            }, 500);
-        }
-
-        function openSponsor() {
-            tg.openTelegramLink("https://t.me/seagull_proxy");
-        }
-
-        for (let i = 0; i < 100; i++) {
+        
+        // Навигация
+        document.getElementById('wheelTab').onclick = () => {
+            document.getElementById('wheelPanel').classList.remove('hidden');
+            document.getElementById('shopPanel').classList.add('hidden');
+            document.getElementById('inventoryPanel').classList.add('hidden');
+            document.getElementById('wheelTab').classList.add('active');
+            document.getElementById('shopTab').classList.remove('active');
+            document.getElementById('inventoryTab').classList.remove('active');
+        };
+        document.getElementById('shopTab').onclick = () => {
+            document.getElementById('wheelPanel').classList.add('hidden');
+            document.getElementById('shopPanel').classList.remove('hidden');
+            document.getElementById('inventoryPanel').classList.add('hidden');
+            document.getElementById('wheelTab').classList.remove('active');
+            document.getElementById('shopTab').classList.add('active');
+            document.getElementById('inventoryTab').classList.remove('active');
+        };
+        document.getElementById('inventoryTab').onclick = () => {
+            document.getElementById('wheelPanel').classList.add('hidden');
+            document.getElementById('shopPanel').classList.add('hidden');
+            document.getElementById('inventoryPanel').classList.remove('hidden');
+            document.getElementById('wheelTab').classList.remove('active');
+            document.getElementById('shopTab').classList.remove('active');
+            document.getElementById('inventoryTab').classList.add('active');
+            renderInventory();
+        };
+        
+        document.getElementById('copyProxyBtn').onclick = () => {
+            tg.openTelegramLink(PROXY_LINK);
+        };
+        
+        document.getElementById('spinBtn').onclick = spinWheel;
+        
+        // Звёзды фона
+        for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
             star.className = 'star';
             star.style.left = Math.random() * 100 + '%';
@@ -461,17 +653,27 @@
             star.style.width = Math.random() * 3 + 1 + 'px';
             star.style.height = star.style.width;
             star.style.animationDelay = Math.random() * 3 + 's';
-            star.style.animationDuration = Math.random() * 2 + 1 + 's';
             document.getElementById('stars').appendChild(star);
         }
-
-        animateText(document.getElementById('title'), 'Seagull VPN', 0.045);
-        setTimeout(() => {
-            animateText(document.getElementById('subText'), 'Обход блокировок Telegram', 0.03);
-        }, 600);
-        setInterval(changeQuote, 6000);
-        document.getElementById('openBtn').addEventListener('click', connectProxy);
-        document.getElementById('sponsorCard').addEventListener('click', openSponsor);
+        
+        function animateText(element, text, delay = 0.04) {
+            element.innerHTML = '';
+            text.split('').forEach((l, i) => {
+                const span = document.createElement('span');
+                span.className = 'letter';
+                span.textContent = l;
+                span.style.animationDelay = `${i * delay}s`;
+                element.appendChild(span);
+            });
+        }
+        
+        animateText(document.getElementById('title'), '🎡 Seagull VPN', 0.04);
+        
+        drawWheel();
+        loadData();
+        initShop();
+        
+        window.useProxyFromInventory = useProxyFromInventory;
     </script>
 </body>
 </html>
