@@ -4,338 +4,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Seagull VPN • Мику с голосом</title>
+    <title>Seagull VPN • Твой прокси</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
         }
-
         body {
-            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 50%, #2a1a4a 100%);
-            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
             padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-            padding-bottom: 120px;
         }
-
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle 2s infinite;
-        }
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-
-        .seagull {
-            position: absolute;
-            font-size: 28px;
-            pointer-events: none;
-            z-index: 10;
-            animation: fly 12s linear infinite;
-        }
-        @keyframes fly {
-            0% { transform: translateX(-10vw) translateY(0); opacity: 0; }
-            20% { opacity: 1; }
-            80% { opacity: 1; }
-            100% { transform: translateX(110vw) translateY(-40px); opacity: 0; }
-        }
-
         .container {
             max-width: 400px;
-            width: 100%;
             margin: 0 auto;
-            position: relative;
-            z-index: 20;
-            opacity: 0;
-            transition: opacity 0.5s;
         }
-        .container.visible { opacity: 1; }
-
         .card {
-            background: rgba(30, 27, 58, 0.85);
+            background: rgba(30,27,58,0.85);
             backdrop-filter: blur(20px);
             border-radius: 48px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 180, 200, 0.4);
+            padding: 24px;
+            border: 1px solid rgba(255,180,200,0.4);
+            text-align: center;
         }
-
         h1 {
             font-size: 24px;
-            font-weight: 800;
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-align: center;
-            margin-bottom: 16px;
         }
-
-        .balance-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .balance-item {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            padding: 8px 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-            justify-content: center;
-            cursor: pointer;
-        }
-        .balance-item span:first-child { font-size: 20px; }
-        .balance-item span:last-child { font-weight: 700; font-size: 18px; }
-
-        .daily-bonus {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 153, 0, 0.2));
+        .proxy-info {
+            background: rgba(0,0,0,0.4);
             border-radius: 32px;
-            padding: 16px;
-            margin-bottom: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid rgba(255, 215, 0, 0.5);
+            padding: 20px;
+            margin: 20px 0;
         }
-        .daily-bonus:active { transform: scale(0.98); }
-        .daily-bonus h3 { color: #ffd700; margin-bottom: 8px; }
-        .daily-reward { font-size: 24px; font-weight: 800; margin: 8px 0; }
-        .daily-timer { font-size: 12px; color: rgba(255,255,255,0.6); }
-
-        .nav-buttons {
-            display: flex;
+        .secret {
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 16px;
+            margin-top: 8px;
+        }
+        .country-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin-bottom: 16px;
+            margin: 20px 0;
         }
-        .nav-btn {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
+        .country-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,180,200,0.3);
             border-radius: 30px;
             padding: 10px;
-            color: white;
-            font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
         }
-        .nav-btn.active { background: linear-gradient(135deg, #ff99cc, #c084fc); }
-
-        .wheel-container {
-            position: relative;
-            margin: 20px 0;
-            display: flex;
-            justify-content: center;
-        }
-        canvas {
-            width: 260px;
-            height: 260px;
-            border-radius: 50%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .spin-btn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 65px;
-            height: 65px;
+        .country-btn.active {
             background: linear-gradient(135deg, #ff99cc, #c084fc);
+            border-color: #ff99cc;
+        }
+        .country-btn:active { transform: scale(0.96); }
+        .flag { font-size: 24px; }
+        .connect-btn {
+            background: #22c55e;
             border: none;
-            border-radius: 50%;
-            color: white;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        .shop-items, .inventory-items {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .shop-item, .inventory-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 24px;
-            padding: 12px;
-        }
-        .shop-buy, .use-btn {
-            background: linear-gradient(135deg, #ff99cc, #c084fc);
-            border: none;
-            border-radius: 30px;
-            padding: 8px 16px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .use-btn { background: #22c55e; }
-
-        .active-proxy {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid #22c55e;
-            border-radius: 20px;
-            padding: 12px;
-            margin-top: 12px;
-        }
-        .proxy-link {
-            font-family: monospace;
-            font-size: 10px;
-            word-break: break-all;
-        }
-        .timer { font-size: 14px; font-weight: 700; color: #ffd700; }
-
-        .hidden { display: none; }
-
-        .miku-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-            animation: fadeIn 0.5s;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .miku-center { text-align: center; animation: mikuPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes mikuPop { from { transform: scale(0.2) rotate(-10deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
-        .miku-center img {
-            width: 180px;
-            border-radius: 50%;
-            box-shadow: 0 0 40px #00ccff;
-            animation: mikuGlow 2s infinite;
-        }
-        @keyframes mikuGlow { 0%,100% { box-shadow: 0 0 20px #00ccff; } 50% { box-shadow: 0 0 50px #ff99cc; } }
-        .speech-center {
-            background: rgba(0,0,0,0.9);
-            color: #00ccff;
-            padding: 12px 24px;
             border-radius: 40px;
-            margin-top: 20px;
-            font-size: 18px;
+            padding: 14px;
+            color: white;
             font-weight: bold;
-        }
-        .miku-bottom {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
+            font-size: 16px;
             cursor: pointer;
-            animation: slideDown 0.8s ease-out;
+            width: 100%;
+            margin-top: 16px;
         }
-        @keyframes slideDown { from { transform: translateX(-50%) translateY(-200px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-        .miku-bottom img { width: 60px; filter: drop-shadow(0 0 10px #00ccff); animation: mikuFloat 3s ease-in-out infinite; }
-        @keyframes mikuFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        .speech-bubble {
-            position: absolute;
-            bottom: 65px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.9);
-            color: #00ccff;
-            padding: 6px 12px;
-            border-radius: 20px;
+        .note {
             font-size: 11px;
-            white-space: nowrap;
-            animation: fadeOut 3s forwards;
-            pointer-events: none;
+            color: rgba(255,255,255,0.5);
+            margin-top: 16px;
         }
-        @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-15px); } }
-
-        .footer { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 16px; }
-        .letter { display: inline-block; opacity: 0; animation: fadeInLetter 0.05s forwards; }
-        @keyframes fadeInLetter { to { opacity: 1; } }
-        button { cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="seagull" style="top: 10%; left: 0; animation-duration: 14s;">🕊️</div>
-    <div class="seagull" style="top: 35%; left: 0; animation-duration: 11s; animation-delay: 2s;">🕊️</div>
-    <div class="seagull" style="top: 65%; left: 0; animation-duration: 13s; animation-delay: 1s;">🕊️</div>
-    <div id="stars"></div>
-
-    <div class="container" id="appContainer">
+    <div class="container">
         <div class="card">
-            <h1 id="title">🎡 Seagull VPN</h1>
-            <div class="balance-row">
-                <div class="balance-item"><span>⭐</span><span id="starsCount">0</span></div>
-                <div class="balance-item"><span>🪙</span><span id="coinsCount">0</span></div>
+            <h1>🔒 ТВОЙ ПРОКСИ</h1>
+            
+            <div class="proxy-info">
+                <div>🌐 ТВОЙ СЕРВЕР</div>
+                <div style="font-family: monospace; font-size: 14px; margin: 8px 0;" id="currentServer">185.239.239.167</div>
+                <div>🔑 ТВОЙ СЕКРЕТ (только у тебя)</div>
+                <div class="secret" id="secretDisplay">eeaaf0d30441bab41f60acae779df0c</div>
             </div>
 
-            <div class="daily-bonus" id="dailyBonus">
-                <h3>📅 ЕЖЕДНЕВНЫЙ БОНУС</h3>
-                <div class="daily-reward" id="dailyReward">+5 ⭐ | +20 🪙</div>
-                <div class="daily-timer" id="dailyTimer">Забрать сейчас!</div>
+            <div style="margin: 16px 0;">
+                🌍 <b>ВЫБЕРИ СТРАНУ (меняется только IP, прокси твой)</b>
             </div>
 
-            <div class="nav-buttons">
-                <button class="nav-btn active" id="wheelTab">🎡 Колесо</button>
-                <button class="nav-btn" id="shopTab">🛒 Магазин</button>
-                <button class="nav-btn" id="inventoryTab">🎒 Инвентарь</button>
+            <div class="country-selector" id="countrySelector">
+                <!-- страны добавятся из js -->
             </div>
 
-            <div id="wheelPanel">
-                <div class="wheel-container">
-                    <canvas id="wheelCanvas" width="400" height="400"></canvas>
-                    <button class="spin-btn" id="spinBtn">КРУТИТЬ<br>1⭐</button>
-                </div>
-                <div id="spinResult" class="active-proxy" style="display: none;"></div>
-            </div>
+            <button class="connect-btn" id="connectBtn">🔌 ПОДКЛЮЧИТЬ ПРОКСИ</button>
 
-            <div id="shopPanel" class="hidden">
-                <div class="shop-items">
-                    <div class="shop-item"><div class="shop-info"><span>⭐</span><span>5 звёзд</span></div><button class="shop-buy" data-type="stars" data-gain="5">Ежедневно</button></div>
-                    <div class="shop-item"><div class="shop-info"><span>🪙</span><span>100 монет</span></div><button class="shop-buy" data-type="coins" data-gain="100">Ежедневно</button></div>
-                    <div class="shop-item"><div class="shop-info"><span>📦</span><span>Прокси на 5 дней</span></div><button class="shop-buy" data-type="proxy_5" data-cost="50" data-gain="5">Купить за 50🪙</button></div>
-                    <div class="shop-item"><div class="shop-info"><span>📦</span><span>Прокси на 9 дней</span></div><button class="shop-buy" data-type="proxy_9" data-cost="80" data-gain="9">Купить за 80🪙</button></div>
-                    <div class="shop-item"><div class="shop-info"><span>🎁</span><span>Случайный прокси</span></div><button class="shop-buy" data-type="random_proxy" data-cost="30" data-gain="random">Купить за 30🪙</button></div>
-                </div>
+            <div class="note">
+                ✅ Это твой прокси — секрет только твой<br>
+                🌍 Меняется только страна (IP), данные под защитой<br>
+                🔐 MTProto шифрует весь трафик
             </div>
-
-            <div id="inventoryPanel" class="hidden">
-                <div id="inventoryList" class="inventory-items"></div>
-            </div>
-
-            <div id="activeProxyPanel" class="active-proxy" style="display: none;">
-                <div>🔌 АКТИВНЫЙ ПРОКСИ</div>
-                <div id="activeProxyLink" class="proxy-link"></div>
-                <div id="activeTimer" class="timer"></div>
-                <button id="copyProxyBtn">📋 Копировать ссылку</button>
-            </div>
-
-            <div class="footer">Крути колесо за 1⭐ | Ежедневный бонус 1 раз в день</div>
         </div>
-    </div>
-
-    <div id="mikuIntro" class="miku-overlay">
-        <div class="miku-center">
-            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077035.png" alt="Мику" style="width:180px; border-radius:50%;">
-            <div class="speech-center" id="mikuSpeech">💙 Привет! Я Мику! 💙</div>
-        </div>
-    </div>
-    <div id="mikuBottom" class="miku-bottom" style="display: none;">
-        <img src="https://cdn-icons-png.flaticon.com/512/1077/1077035.png" alt="Мику" style="width:60px;">
-        <div id="bottomSpeech" class="speech-bubble" style="display: none;"></div>
     </div>
 
     <script>
@@ -343,325 +124,79 @@
         tg.ready();
         tg.expand();
 
-        const PROXY_SERVER = "185.239.239.167";
-        const PROXY_PORT = "443";
-        const PROXY_SECRET = "eeaaf0d30441bab41f60acae779df0c";
-        const PROXY_LINK = `https://t.me/proxy?server=${PROXY_SERVER}&port=${PROXY_PORT}&secret=${PROXY_SECRET}`;
-
-        let userData = {
-            stars: 3,
-            coins: 20,
-            inventory: [],
-            activeProxy: null,
-            lastDaily: 0
-        };
-
-        // ГОЛОС МИКУ
-        function speak(text) {
-            if (!window.speechSynthesis) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ru-RU';
-            utterance.rate = 0.9;
-            utterance.pitch = 1.3;
-            utterance.volume = 1;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        }
-
-        function loadData() {
-            const saved = localStorage.getItem('seagull_user');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    userData = { ...userData, ...parsed };
-                    if (userData.activeProxy && userData.activeProxy.expiresAt < Date.now()) userData.activeProxy = null;
-                } catch(e) {}
-            }
-            updateUI();
-            updateDailyButton();
-        }
-
-        function saveData() { localStorage.setItem('seagull_user', JSON.stringify(userData)); }
-
-        function updateUI() {
-            document.getElementById('starsCount').innerText = userData.stars;
-            document.getElementById('coinsCount').innerText = userData.coins;
-            if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
-                document.getElementById('activeProxyPanel').style.display = 'block';
-                document.getElementById('activeProxyLink').innerHTML = PROXY_LINK;
-                const remaining = Math.ceil((userData.activeProxy.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-                document.getElementById('activeTimer').innerHTML = `⏰ Осталось: ${remaining} ${getDayWord(remaining)}`;
-            } else {
-                document.getElementById('activeProxyPanel').style.display = 'none';
-                if (userData.activeProxy) { userData.activeProxy = null; saveData(); }
-            }
-            renderInventory();
-        }
-
-        function getDayWord(days) {
-            if (days % 10 === 1 && days % 100 !== 11) return 'день';
-            if ([2,3,4].includes(days % 10) && ![12,13,14].includes(days % 100)) return 'дня';
-            return 'дней';
-        }
-
-        function addStars(amount) { userData.stars += amount; saveData(); updateUI(); mikuSpeak(`+${amount} звезд!`); speak(`Ура! ${amount} звезд получено!`); }
-        function addCoins(amount) { userData.coins += amount; saveData(); updateUI(); mikuSpeak(`+${amount} монет!`); speak(`Отлично! ${amount} монет!`); }
-        function showMessage(msg) { tg.showPopup({ title: "📢", message: msg, buttons: [{ type: "ok" }] }); }
-
-        function mikuSpeak(text) {
-            const bubble = document.getElementById('bottomSpeech');
-            bubble.textContent = `💙 ${text} 💙`;
-            bubble.style.display = 'block';
-            setTimeout(() => { bubble.style.display = 'none'; }, 3000);
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        }
-
-        function addToInventory(type, days) {
-            userData.inventory.push({ type, days, addedAt: Date.now() });
-            saveData(); updateUI();
-            mikuSpeak(`Прокси на ${days} дней в инвентаре!`);
-            speak(`Поздравляю! Прокси на ${days} дней теперь в инвентаре!`);
-            showMessage(`🎁 Получен прокси на ${days} дней! Зайди в инвентарь чтобы активировать.`);
-        }
-
-        window.useProxyFromInventory = function(index) {
-            if (userData.activeProxy && userData.activeProxy.expiresAt > Date.now()) {
-                showMessage("❌ У вас уже активен прокси! Дождитесь окончания.");
-                mikuSpeak("Уже есть активный прокси!");
-                speak("Подожди, у тебя уже есть активный прокси!");
-                return;
-            }
-            const item = userData.inventory[index];
-            if (!item) return;
-            const expiresAt = Date.now() + item.days * 24 * 60 * 60 * 1000;
-            userData.activeProxy = { expiresAt };
-            userData.inventory.splice(index, 1);
-            saveData(); updateUI();
-            mikuSpeak(`Прокси активирован на ${item.days} дней!`);
-            speak(`Прокси активирован! Теперь Telegram работает без блокировок на ${item.days} дней!`);
-            showMessage(`✅ Прокси активирован на ${item.days} дней!`);
-            tg.openTelegramLink(PROXY_LINK);
-        };
-
-        function renderInventory() {
-            const container = document.getElementById('inventoryList');
-            if (userData.inventory.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px;">🎒 Пусто</div>'; return; }
-            container.innerHTML = userData.inventory.map((item, i) => `
-                <div class="inventory-item"><div>📦 Прокси на ${item.days} дней</div><button class="use-btn" onclick="useProxyFromInventory(${i})">Активировать</button></div>
-            `).join('');
-        }
-
-        function updateDailyButton() {
-            const now = Date.now();
-            const last = userData.lastDaily || 0;
-            const diff = now - last;
-            const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - diff) / (1000 * 60 * 60));
-            const btn = document.getElementById('dailyBonus');
-            if (diff >= 24 * 60 * 60 * 1000) {
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-                document.getElementById('dailyTimer').innerHTML = '🎁 ЗАБРАТЬ БОНУС!';
-                document.getElementById('dailyReward').innerHTML = '+5 ⭐ | +20 🪙';
-            } else {
-                btn.style.opacity = '0.7';
-                btn.style.cursor = 'not-allowed';
-                document.getElementById('dailyTimer').innerHTML = `⏰ Через ${hoursLeft} ч.`;
-            }
-        }
-
-        function claimDaily() {
-            const now = Date.now();
-            if (userData.lastDaily && (now - userData.lastDaily) < 24 * 60 * 60 * 1000) {
-                showMessage("⏰ Бонус уже получен! Приходи завтра.");
-                mikuSpeak("Бонус уже получен! Приходи завтра!");
-                speak("Бонус уже получен! Приходи завтра!");
-                return;
-            }
-            userData.lastDaily = now;
-            const isTuesday = new Date().getDay() === 2;
-            const starsGain = isTuesday ? 10 : 5;
-            const coinsGain = isTuesday ? 40 : 20;
-            addStars(starsGain);
-            addCoins(coinsGain);
-            if (isTuesday) {
-                mikuSpeak("Вторник! Двойной бонус!");
-                speak("Ура! Сегодня вторник, двойной бонус!");
-            }
-            updateDailyButton();
-            showMessage(`✨ Получено ${starsGain} ⭐ и ${coinsGain} 🪙!`);
-        }
-
-        // Колесо (упрощённо)
-        const canvas = document.getElementById('wheelCanvas');
-        const ctx = canvas.getContext('2d');
-        const segments = [
-            { label: "5🪙", color: "#ff99cc", type: "coins", value: 5 },
-            { label: "10🪙", color: "#c084fc", type: "coins", value: 10 },
-            { label: "3⭐", color: "#a855f7", type: "stars", value: 3 },
-            { label: "5⭐", color: "#ff69b4", type: "stars", value: 5 },
-            { label: "📦5д", color: "#d946ef", type: "proxy", value: 5 },
-            { label: "📦9д", color: "#f472b6", type: "proxy", value: 9 }
+        // ========== ТВОЙ ПРОКСИ (НЕ МЕНЯЕТСЯ) ==========
+        const YOUR_SECRET = "eeaaf0d30441bab41f60acae779df0c";
+        const YOUR_PORT = "443";
+        
+        // ТВОЙ ОСНОВНОЙ СЕРВЕР (можешь заменить на свой)
+        let currentServer = "185.239.239.167";
+        
+        // Список IP для разных стран (ТЫ УПРАВЛЯЕШЬ ЭТИМ СПИСКОМ)
+        // Это просто разные IP, которые ведут на ТВОЙ прокси
+        // Можешь добавить свои серверы в разных странах
+        const COUNTRIES = [
+            { name: "🇷🇺 Россия", ip: "185.239.239.167" },
+            { name: "🇳🇱 Нидерланды", ip: "146.70.198.44" },
+            { name: "🇩🇪 Германия", ip: "5.199.171.134" },
+            { name: "🇺🇸 США", ip: "45.147.230.45" },
+            { name: "🇫🇮 Финляндия", ip: "91.239.232.116" },
+            { name: "🇯🇵 Япония", ip: "103.152.112.120" }
         ];
-        let currentAngle = 0, spinning = false;
-        function drawWheel() {
-            const size = 400;
-            canvas.width = size; canvas.height = size;
-            const center = size/2, radius = size/2 - 10;
-            const angleStep = (Math.PI*2)/segments.length;
-            for(let i=0;i<segments.length;i++){
-                const start = currentAngle + i*angleStep, end = start+angleStep;
-                ctx.beginPath(); ctx.moveTo(center,center); ctx.arc(center,center,radius,start,end);
-                ctx.fillStyle = segments[i].color; ctx.fill();
-                ctx.strokeStyle = "white"; ctx.lineWidth=2; ctx.stroke();
-                ctx.save(); ctx.translate(center,center); ctx.rotate(start+angleStep/2);
-                ctx.fillStyle="white"; ctx.font="bold 18px 'Segoe UI'"; ctx.fillText(segments[i].label, radius-35,10);
-                ctx.restore();
-            }
-            ctx.beginPath(); ctx.moveTo(center-15,15); ctx.lineTo(center,0); ctx.lineTo(center+15,15); ctx.fillStyle="white"; ctx.fill();
-        }
-        function spinWheel() {
-            if(spinning) return;
-            if(userData.stars<1){ showMessage("❌ Недостаточно звёзд!"); mikuSpeak("Нужна 1 звезда!"); speak("У тебя нет звёзд, крути ежедневный бонус!"); return; }
-            userData.stars--; saveData(); updateUI();
-            spinning=true;
-            const spinAngle = 360*6+Math.random()*360;
-            const targetAngle = currentAngle + (spinAngle*Math.PI/180);
-            const duration=2000, startTime=performance.now(), startAngle=currentAngle;
-            function animateSpin(now){
-                const elapsed=now-startTime, progress=Math.min(1,elapsed/duration);
-                const ease=1-Math.pow(1-progress,3);
-                currentAngle = startAngle+(targetAngle-startAngle)*ease;
-                drawWheel();
-                if(progress<1) requestAnimationFrame(animateSpin);
-                else{
-                    currentAngle = targetAngle%(Math.PI*2);
-                    drawWheel();
-                    const angleStep = (Math.PI*2)/segments.length;
-                    const pointerAngle = (Math.PI*2-(currentAngle%(Math.PI*2)))%(Math.PI*2);
-                    const index = Math.floor(pointerAngle/angleStep)%segments.length;
-                    const prize = segments[index];
-                    if(prize.type==="coins") addCoins(prize.value);
-                    else if(prize.type==="stars") addStars(prize.value);
-                    else if(prize.type==="proxy") addToInventory(`proxy_${prize.value}`, prize.value);
-                    mikuSpeak(`Выигрыш: ${prize.label}!`);
-                    speak(`Ты выиграл ${prize.label}!`);
-                    document.getElementById('spinResult').innerHTML = `<div>🎉 ВЫИГРЫШ: ${prize.label} 🎉</div>`;
-                    document.getElementById('spinResult').style.display='block';
-                    setTimeout(()=>document.getElementById('spinResult').style.display='none',3000);
-                    spinning=false;
-                }
-            }
-            requestAnimationFrame(animateSpin);
-        }
 
-        function initShop() {
-            document.querySelectorAll('.shop-buy').forEach(btn => {
-                btn.onclick = () => {
-                    const type = btn.dataset.type;
-                    const cost = parseInt(btn.dataset.cost) || 0;
-                    const gain = parseInt(btn.dataset.gain);
-                    if(type==="stars"){
-                        if(userData.lastDaily && (Date.now()-userData.lastDaily)<24*60*60*1000){
-                            showMessage("⏰ Бонус уже получен!"); return;
-                        }
-                        userData.lastDaily=Date.now();
-                        addStars(gain);
-                        updateDailyButton();
-                        showMessage(`✨ Получено ${gain} звёзд!`);
-                    } else if(type==="coins"){
-                        if(userData.lastDaily && (Date.now()-userData.lastDaily)<24*60*60*1000){
-                            showMessage("⏰ Бонус уже получен!"); return;
-                        }
-                        userData.lastDaily=Date.now();
-                        addCoins(gain);
-                        updateDailyButton();
-                        showMessage(`🪙 Получено ${gain} монет!`);
-                    } else if(type==="proxy_5" || type==="proxy_9"){
-                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); mikuSpeak(`Не хватает монет!`); speak(`У тебя мало монет, нужно ${cost}`); return; }
-                        userData.coins -= cost;
-                        addToInventory(type, gain);
-                        saveData(); updateUI();
-                    } else if(type==="random_proxy"){
-                        if(userData.coins < cost){ showMessage(`❌ Нужно ${cost} 🪙`); return; }
-                        userData.coins -= cost;
-                        const days = Math.random()<0.3 ? 9 : 5;
-                        addToInventory(`proxy_${days}`, days);
-                        saveData(); updateUI();
-                    }
-                };
+        let activeCountryIndex = 0;
+
+        function renderCountries() {
+            const container = document.getElementById('countrySelector');
+            container.innerHTML = COUNTRIES.map((country, i) => `
+                <div class="country-btn ${i === activeCountryIndex ? 'active' : ''}" data-index="${i}">
+                    <div class="flag">${country.name.split(' ')[0]}</div>
+                    <div style="font-size: 11px;">${country.name.split(' ')[1]}</div>
+                </div>
+            `).join('');
+            
+            // Добавляем обработчики
+            document.querySelectorAll('.country-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    activeCountryIndex = index;
+                    currentServer = COUNTRIES[index].ip;
+                    renderCountries();
+                    document.getElementById('currentServer').textContent = currentServer;
+                    
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                });
             });
         }
 
-        // Навигация
-        document.getElementById('wheelTab').onclick = () => {
-            document.getElementById('wheelPanel').classList.remove('hidden');
-            document.getElementById('shopPanel').classList.add('hidden');
-            document.getElementById('inventoryPanel').classList.add('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-            document.getElementById('wheelTab').classList.add('active');
-        };
-        document.getElementById('shopTab').onclick = () => {
-            document.getElementById('wheelPanel').classList.add('hidden');
-            document.getElementById('shopPanel').classList.remove('hidden');
-            document.getElementById('inventoryPanel').classList.add('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-            document.getElementById('shopTab').classList.add('active');
-        };
-        document.getElementById('inventoryTab').onclick = () => {
-            document.getElementById('wheelPanel').classList.add('hidden');
-            document.getElementById('shopPanel').classList.add('hidden');
-            document.getElementById('inventoryPanel').classList.remove('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-            document.getElementById('inventoryTab').classList.add('active');
-            renderInventory();
-        };
-        document.getElementById('copyProxyBtn').onclick = () => tg.openTelegramLink(PROXY_LINK);
-        document.getElementById('spinBtn').onclick = spinWheel;
-        document.getElementById('dailyBonus').onclick = claimDaily;
-
-        for(let i=0;i<80;i++){
-            const star=document.createElement('div');
-            star.className='star';
-            star.style.left=Math.random()*100+'%';
-            star.style.top=Math.random()*100+'%';
-            star.style.width=Math.random()*3+1+'px';
-            star.style.height=star.style.width;
-            star.style.animationDelay=Math.random()*3+'s';
-            document.getElementById('stars').appendChild(star);
+        function getProxyLink() {
+            return `https://t.me/proxy?server=${currentServer}&port=${YOUR_PORT}&secret=${YOUR_SECRET}`;
         }
 
-        function animateText(element, text, delay=0.04){
-            element.innerHTML='';
-            text.split('').forEach((l,i)=>{
-                const span=document.createElement('span');
-                span.className='letter';
-                span.textContent=l;
-                span.style.animationDelay=`${i*delay}s`;
-                element.appendChild(span);
+        function connectProxy() {
+            const link = getProxyLink();
+            tg.openTelegramLink(link);
+            
+            tg.showPopup({
+                title: "🔒 ТВОЙ ПРОКСИ",
+                message: `Подключение через ${COUNTRIES[activeCountryIndex].name}\nСекрет твой, данные под защитой!`,
+                buttons: [{ type: "ok", text: "✅ Понятно" }]
             });
         }
-        animateText(document.getElementById('title'), '🎡 Seagull VPN', 0.04);
 
-        drawWheel();
-        loadData();
-        initShop();
-
-        // Анимация приветствия Мику с голосом
+        document.getElementById('connectBtn').addEventListener('click', connectProxy);
+        document.getElementById('secretDisplay').textContent = YOUR_SECRET;
+        document.getElementById('currentServer').textContent = currentServer;
+        
+        renderCountries();
+        
+        // Показываем, что всё под контролем
         setTimeout(() => {
-            const speech = document.getElementById('mikuSpeech');
-            speech.textContent = "💙 Привет! Я Мику! Готова крутить колесо? 💙";
-            speak("Привет! Я Мику! Готова крутить колесо?");
-            setTimeout(() => {
-                document.getElementById('mikuIntro').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('mikuIntro').style.display = 'none';
-                    document.getElementById('mikuBottom').style.display = 'block';
-                    document.getElementById('appContainer').classList.add('visible');
-                    mikuSpeak("Привет! Крути колесо за звёзды!");
-                    speak("Давай крутить колесо!");
-                }, 500);
-            }, 3000);
-        }, 1000);
+            tg.showPopup({
+                title: "🔐 ТВОЙ ПРОКСИ",
+                message: "Секрет только у тебя.\nМеняется только страна (IP).\nТвои данные в безопасности.",
+                buttons: [{ type: "ok", text: "Понятно" }]
+            });
+        }, 500);
     </script>
 </body>
 </html>
