@@ -1,46 +1,29 @@
-const { Telegraf } = require('telegraf');
-
-// Токен бота (замените на свой)
-const BOT_TOKEN = 'ВАШ_ТОКЕН_ОТ_BOTFATHER';
-
-const bot = new Telegraf(BOT_TOKEN);
-
-// Ваш прокси
-const PROXY_LINK = "https://t.me/proxy?server=4.180.183.240&port=443&secret=759773b1a20c258fbc4dde470bc0460e";
-
-// Команда /start
-bot.start((ctx) => {
-    ctx.replyWithHTML(
-        `🔐 <b>VPN Proxy Bot</b>\n\n` +
-        `Обход блокировок Telegram одним нажатием.\n\n` +
-        `🛡️ Ваш прокси готов к подключению:\n` +
-        `<code>4.180.183.240:443</code>\n\n` +
-        `👇 Нажмите кнопку ниже, чтобы включить обход`,
-        {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🔓 ВКЛЮЧИТЬ ОБХОД", url: PROXY_LINK }],
-                    [{ text: "📱 Открыть Mini App", web_app: { url: "https://ВАШ_username.github.io/ВАШ_репозиторий" } }]
-                ]
-            }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Seagull VPN • Аниме прокси</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    );
-});
 
-// Команда /proxy
-bot.command('proxy', (ctx) => {
-    ctx.replyWithHTML(
-        `🔗 <b>Ваша ссылка для подключения:</b>\n\n` +
-        `<code>${PROXY_LINK}</code>\n\n` +
-        `Нажмите на ссылку → подтвердите подключение → Telegram разблокирован!`
-    );
-});
+        body {
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 50%, #2a1a4a 100%);
+            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+            animation: bgPulse 8s ease-in-out infinite;
+        }
 
-// Запуск бота
-bot.launch().then(() => {
-    console.log('✅ Бот запущен!');
-});
-
-// Остановка
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+        @keyframes bgPulse {
+            0%, 100% { background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e
