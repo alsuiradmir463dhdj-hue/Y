@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Мой прокси • Только для меня</title>
+    <title>VPN • Канал</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
         body {
             background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 100%);
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: system-ui, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -21,7 +21,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 380px;
+            max-width: 360px;
             width: 100%;
         }
         .card {
@@ -32,70 +32,47 @@
             text-align: center;
             border: 1px solid rgba(255,180,200,0.4);
         }
-        h1 {
-            font-size: 26px;
-            background: linear-gradient(135deg, #ff99cc, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 24px;
-        }
-        .lock-icon {
+        .channel-icon {
             font-size: 60px;
             margin-bottom: 20px;
         }
-        input {
-            width: 100%;
-            padding: 14px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,180,200,0.3);
-            border-radius: 30px;
-            color: white;
-            font-size: 16px;
-            margin-bottom: 12px;
-            text-align: center;
+        h1 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #ff99cc, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
         }
-        input:focus {
-            outline: none;
-            border-color: #ff99cc;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
+        .sub-btn {
             background: linear-gradient(135deg, #ff99cc, #c084fc);
             border: none;
             border-radius: 40px;
+            padding: 14px;
             color: white;
             font-weight: bold;
-            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
             cursor: pointer;
-            margin-top: 12px;
         }
-        .admin-panel {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.2);
+        .connect-btn {
+            background: #22c55e;
+            border: none;
+            border-radius: 40px;
+            padding: 14px;
+            color: white;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
         }
-        .admin-title {
-            font-size: 14px;
-            color: #ffd700;
-            margin-bottom: 12px;
-        }
-        .proxy-link {
-            font-family: monospace;
-            font-size: 10px;
-            word-break: break-all;
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 16px;
-            margin-top: 12px;
-        }
-        .hidden {
-            display: none;
+        .connect-btn.disabled {
+            background: #555;
+            cursor: not-allowed;
         }
         .status {
             font-size: 12px;
-            color: #22c55e;
-            margin-top: 12px;
+            color: #ffd700;
+            margin-top: 16px;
         }
         .note {
             font-size: 10px;
@@ -107,27 +84,21 @@
 <body>
     <div class="container">
         <div class="card">
-            <div class="lock-icon">🔒</div>
-            <h1>Мой прокси</h1>
+            <div class="channel-icon">📢</div>
+            <h1>VPN PROXY</h1>
             
-            <div id="loginPanel">
-                <input type="password" id="passwordInput" placeholder="Введите пароль">
-                <button id="loginBtn">ВОЙТИ</button>
-                <div class="note">Только владелец имеет доступ</div>
+            <div id="subPanel">
+                <button class="sub-btn" id="subBtn">⭐ ПОДПИСАТЬСЯ НА КАНАЛ</button>
+                <div class="note">Подпишись, чтобы получить доступ к прокси</div>
             </div>
 
-            <div id="adminPanel" class="hidden">
-                <div class="admin-title">⚙️ УПРАВЛЕНИЕ ПРОКСИ</div>
-                
-                <input type="text" id="serverInput" placeholder="Сервер (IP)">
-                <input type="text" id="portInput" placeholder="Порт" value="443">
-                <input type="text" id="secretInput" placeholder="Секрет (ключ)">
-                
-                <button id="saveBtn">💾 СОХРАНИТЬ НАСТРОЙКИ</button>
-                <button id="activateBtn" style="background: #22c55e;">🔌 АКТИВИРОВАТЬ ПРОКСИ</button>
-                
-                <div id="proxyLinkDisplay" class="proxy-link"></div>
-                <div id="statusDisplay" class="status"></div>
+            <div id="proxyPanel" style="display: none;">
+                <button class="connect-btn" id="connectBtn">🔌 ПОДКЛЮЧИТЬ ПРОКСИ</button>
+                <div class="status" id="statusText">✅ Подписка подтверждена!</div>
+            </div>
+
+            <div class="note">
+                Канал будет вверху после подписки
             </div>
         </div>
     </div>
@@ -137,87 +108,63 @@
         tg.ready();
         tg.expand();
 
-        // ========== ТВОЙ ПАРОЛЬ (только ты знаешь) ==========
-        const OWNER_PASSWORD = "мойсекрет2024";  // 🔥 ЗАМЕНИ НА СВОЙ ПАРОЛЬ!
+        // ТВОЙ КАНАЛ
+        const CHANNEL_LINK = "https://t.me/ваш_канал";
         
-        // ========== ТВОИ ДАННЫЕ ПО УМОЛЧАНИЮ ==========
-        let proxyConfig = {
-            server: "185.239.239.167",
-            port: "443",
-            secret: "eeaaf0d30441bab41f60acae779df0c"
-        };
+        // ТВОЙ ПРОКСИ
+        const PROXY_LINK = "https://t.me/proxy?server=185.239.239.167&port=443&secret=eeaaf0d30441bab41f60acae779df0c";
 
-        // Загрузка сохранённых настроек
-        function loadConfig() {
-            const saved = localStorage.getItem('my_proxy_config');
-            if (saved) {
-                try {
-                    proxyConfig = JSON.parse(saved);
-                    document.getElementById('serverInput').value = proxyConfig.server;
-                    document.getElementById('portInput').value = proxyConfig.port;
-                    document.getElementById('secretInput').value = proxyConfig.secret;
-                } catch(e) {}
+        let isSubscribed = false;
+
+        function checkSubscription() {
+            // Проверяем, подписался ли пользователь
+            const saved = localStorage.getItem('subscribed_to_channel');
+            if (saved === 'true') {
+                isSubscribed = true;
+                document.getElementById('subPanel').style.display = 'none';
+                document.getElementById('proxyPanel').style.display = 'block';
             }
         }
 
-        function saveConfig() {
-            proxyConfig = {
-                server: document.getElementById('serverInput').value,
-                port: document.getElementById('portInput').value,
-                secret: document.getElementById('secretInput').value
-            };
-            localStorage.setItem('my_proxy_config', JSON.stringify(proxyConfig));
-            document.getElementById('statusDisplay').textContent = '✅ Настройки сохранены!';
-            updateProxyLink();
-            setTimeout(() => {
-                document.getElementById('statusDisplay').textContent = '';
-            }, 2000);
+        function subscribe() {
+            tg.openTelegramLink(CHANNEL_LINK);
+            tg.showPopup({
+                title: "📢 Подпишись",
+                message: "После подписки нажми 'Проверить'",
+                buttons: [
+                    { id: "check", type: "ok", text: "✅ ПРОВЕРИТЬ" }
+                ]
+            }, (buttonId) => {
+                if (buttonId === "check") {
+                    localStorage.setItem('subscribed_to_channel', 'true');
+                    isSubscribed = true;
+                    document.getElementById('subPanel').style.display = 'none';
+                    document.getElementById('proxyPanel').style.display = 'block';
+                    tg.showPopup({
+                        title: "✅ Готово!",
+                        message: "Теперь ты можешь подключить прокси!",
+                        buttons: [{ type: "ok", text: "Ок" }]
+                    });
+                }
+            });
         }
 
-        function updateProxyLink() {
-            const link = `https://t.me/proxy?server=${proxyConfig.server}&port=${proxyConfig.port}&secret=${proxyConfig.secret}`;
-            document.getElementById('proxyLinkDisplay').innerHTML = `🔗 <a href="${link}" style="color:#00ccff;">${link}</a>`;
-        }
-
-        function activateProxy() {
-            const link = `https://t.me/proxy?server=${proxyConfig.server}&port=${proxyConfig.port}&secret=${proxyConfig.secret}`;
-            tg.openTelegramLink(link);
-            document.getElementById('statusDisplay').textContent = '🔌 Подключение...';
-            setTimeout(() => {
-                document.getElementById('statusDisplay').textContent = '✅ Прокси активирован!';
-            }, 1500);
-        }
-
-        function login() {
-            const password = document.getElementById('passwordInput').value;
-            if (password === OWNER_PASSWORD) {
-                document.getElementById('loginPanel').classList.add('hidden');
-                document.getElementById('adminPanel').classList.remove('hidden');
-                loadConfig();
-                updateProxyLink();
+        function connectProxy() {
+            if (!isSubscribed) {
                 tg.showPopup({
-                    title: "🔓 Доступ открыт",
-                    message: "Теперь ты управляешь прокси!\nМожешь менять сервер, порт, секрет.",
-                    buttons: [{ type: "ok", text: "Понятно" }]
-                });
-            } else {
-                tg.showPopup({
-                    title: "❌ Ошибка",
-                    message: "Неверный пароль! Доступ запрещён.",
+                    title: "❌",
+                    message: "Сначала подпишись на канал!",
                     buttons: [{ type: "ok", text: "Ок" }]
                 });
-                document.getElementById('passwordInput').value = '';
+                return;
             }
+            tg.openTelegramLink(PROXY_LINK);
         }
 
-        document.getElementById('loginBtn').addEventListener('click', login);
-        document.getElementById('saveBtn').addEventListener('click', saveConfig);
-        document.getElementById('activateBtn').addEventListener('click', activateProxy);
-        
-        // Enter для входа
-        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
+        document.getElementById('subBtn').addEventListener('click', subscribe);
+        document.getElementById('connectBtn').addEventListener('click', connectProxy);
+
+        checkSubscription();
     </script>
 </body>
 </html>
